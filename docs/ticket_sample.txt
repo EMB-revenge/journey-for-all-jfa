@@ -1,0 +1,29 @@
+┌─────────────────────────────────────────┐
+│         🚌 INTERCITY BUS TICKET          │
+│              [COMPANY LOGO]               │
+│                                           │
+│   BOOKING REF: #BK-2026-0001             │
+│   STATUS: CONFIRMED                       │
+│                                           │
+│   PASSENGER: Juan Dela Cruz               │
+│   CONTACT: 09123456789                    │
+│   EMAIL: juan@email.com                   │
+│                                           │
+│   ROUTE: Cebu → Bacolod                   │
+│   DATE: September 15, 2026                │
+│   DEPARTURE: 08:00 AM                     │
+│   ARRIVAL: 12:30 PM                       │
+│   BUS: Unit 101 - Ceres                  │
+│   SEAT: A-12                              │
+│                                           │
+│   FARE: ₱750.00                           │
+│   BOOKED ON: Sept 1, 2026 10:30 AM       │
+│                                           │
+│   ┌──────────────────────────┐            │
+│   │      [QR CODE]            │            │
+│   │   Scan for verification   │            │
+│   └──────────────────────────┘            │
+│                                           │
+│   Please arrive 30 minutes early.        │
+│   Present this ticket upon boarding.     │
+└─────────────────────────────────────────┘

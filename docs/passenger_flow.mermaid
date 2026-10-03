@@ -1,0 +1,22 @@
+graph TD
+    A["Login"] --> B["Search: origin, dest, date, 1-6 passengers"]
+    B --> C["Results: schedule.search"]
+    C --> D["Select schedule"]
+    D --> E["Seat map: schedule.seats"]
+    E --> F["Pick exactly N seats (local only)"]
+    F --> G["Continue: hold.create, 5 minutes"]
+    G --> H["Countdown visible"]
+    H --> I["Passenger form per seat"]
+    I --> J["Summary"]
+    J --> K["Confirm: booking.confirm in one transaction"]
+    K --> L["Digital ticket"]
+    L --> M["My Bookings"]
+
+    G --> N["CONFLICT + takenSeats"]
+    K --> N
+    N --> O["Refetch seat map"]
+    O --> E
+
+    H --> P["Countdown hits zero"]
+    P --> Q["hold.release"]
+    Q --> E
