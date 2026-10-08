@@ -1,103 +1,82 @@
-import { headers } from "next/headers";
-import Link from "next/link";
-import { redirect } from "next/navigation";
+import Image from "next/image";
 
-import { LatestPost } from "~/app/_components/post";
-import { auth } from "~/server/better-auth";
-import { getSession } from "~/server/better-auth/server";
-import { api, HydrateClient } from "~/trpc/server";
+import { Navbar } from "~/app/_components/navbar";
+import { SearchForm } from "~/app/_components/search-form";
 
-export default async function Home() {
-  const hello = await api.post.hello({ text: "from tRPC" });
-  const session = await getSession();
+const steps = [
+  {
+    number: "01",
+    title: "Search",
+    text: "Choose your departure city, destination, and travel date.",
+  },
+  {
+    number: "02",
+    title: "Pick your seat",
+    text: "See which seats are open and select the one you want.",
+  },
+  {
+    number: "03",
+    title: "Get your ticket",
+    text: "Confirm your booking and receive your digital ticket instantly.",
+  },
+];
 
-  if (session) {
-    void api.post.getLatest.prefetch();
-  }
-
+export default function HomePage() {
   return (
-    <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-            Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
-          </h1>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/usage/first-steps"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">First Steps →</h3>
-              <div className="text-lg">
-                Just the basics - Everything you need to know to set up your
-                database and authentication.
-              </div>
-            </Link>
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/introduction"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">Documentation →</h3>
-              <div className="text-lg">
-                Learn more about Create T3 App, the libraries it uses, and how
-                to deploy it.
-              </div>
-            </Link>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-2xl text-white">
-              {hello ? hello.greeting : "Loading tRPC query..."}
+    <>
+      <Navbar />
+      <main>
+        {/* Hero with background image */}
+        <section className="relative overflow-hidden bg-neutral-900">
+          <Image
+            src="/hero.jpg"
+            alt=""
+            fill
+            priority
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-black/60" />
+
+          <div className="relative mx-auto max-w-7xl px-6 pt-24 pb-44">
+            <p className="mb-6 text-sm font-semibold tracking-[0.25em] text-yellow-400 uppercase">
+              Book your bus in minutes
             </p>
-
-            <div className="flex flex-col items-center justify-center gap-4">
-              <p className="text-center text-2xl text-white">
-                {session && <span>Logged in as {session.user?.name}</span>}
-              </p>
-              {!session ? (
-                <form>
-                  <button
-                    className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
-                    formAction={async () => {
-                      "use server";
-                      const res = await auth.api.signInSocial({
-                        body: {
-                          provider: "github",
-                          callbackURL: "/",
-                        },
-                      });
-                      if (!res.url) {
-                        throw new Error("No URL returned from signInSocial");
-                      }
-                      redirect(res.url);
-                    }}
-                  >
-                    Sign in with Github
-                  </button>
-                </form>
-              ) : (
-                <form>
-                  <button
-                    className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
-                    formAction={async () => {
-                      "use server";
-                      await auth.api.signOut({
-                        headers: await headers(),
-                      });
-                      redirect("/");
-                    }}
-                  >
-                    Sign out
-                  </button>
-                </form>
-              )}
-            </div>
+            <h1 className="max-w-3xl text-6xl leading-[1.05] font-bold tracking-tight text-white md:text-7xl">
+              Pick a city. Pick a seat. Go.
+            </h1>
+            <p className="mt-8 max-w-xl text-xl text-white/80">
+              Search trips between cities, reserve your exact seat, and get
+              your digital ticket right away.
+            </p>
           </div>
+        </section>
 
-          {session?.user && <LatestPost />}
+        
+        <div className="relative z-10 mx-auto -mt-28 max-w-7xl px-6">
+          <SearchForm />
         </div>
+
+        {/* stepss*/}
+        <section className="mx-auto max-w-7xl px-6 py-24">
+          <h2 className="text-3xl font-bold text-neutral-900">How it works</h2>
+          <div className="mt-10 grid gap-8 md:grid-cols-3">
+            {steps.map((step) => (
+              <div
+                key={step.number}
+                className="rounded-2xl border border-neutral-200 p-8"
+              >
+                <span className="inline-block rounded-lg bg-yellow-400 px-3 py-1 text-sm font-bold text-black">
+                  {step.number}
+                </span>
+                <h3 className="mt-4 text-xl font-semibold text-neutral-900">
+                  {step.title}
+                </h3>
+                <p className="mt-2 text-neutral-600">{step.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
       </main>
-    </HydrateClient>
+    </>
   );
 }
