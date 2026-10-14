@@ -3,19 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-// Temporary list
-const cities = ["Bacolod", "Cebu", "Dumaguete", "Iloilo", "Tagbilaran"];
-
-const popularRoutes = [
-  { from: "Cebu", to: "Bacolod" },
-  { from: "Cebu", to: "Iloilo" },
-];
+import { api } from "~/trpc/react";
 
 export function SearchForm() {
   const router = useRouter();
+  const { data: cities, isLoading } = api.city.list.useQuery();
+
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [date, setDate] = useState("");
+
+  const today = new Date().toLocaleDateString("en-CA");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,8 +29,6 @@ export function SearchForm() {
       onSubmit={handleSubmit}
       className="rounded-3xl border border-neutral-200 bg-white p-8 shadow-2xl"
     >
-
-
       <div className="grid gap-4 md:grid-cols-[1fr_1fr_0.7fr_auto] md:items-end">
         <label className="block">
           <span className="mb-2 block text-sm text-neutral-600">From</span>
@@ -40,14 +36,15 @@ export function SearchForm() {
             className={fieldClass}
             value={from}
             onChange={(e) => setFrom(e.target.value)}
+            disabled={isLoading}
             required
           >
             <option value="" disabled>
-              Select departure city
+              {isLoading ? "Loading cities..." : "Select departure city"}
             </option>
-            {cities.map((city) => (
-              <option key={city} value={city} disabled={city === to}>
-                {city}
+            {cities?.map((city) => (
+              <option key={city.id} value={city.id} disabled={city.id === to}>
+                {city.name}
               </option>
             ))}
           </select>
@@ -59,14 +56,19 @@ export function SearchForm() {
             className={fieldClass}
             value={to}
             onChange={(e) => setTo(e.target.value)}
+            disabled={isLoading}
             required
           >
             <option value="" disabled>
-              Select destination city
+              {isLoading ? "Loading cities..." : "Select destination city"}
             </option>
-            {cities.map((city) => (
-              <option key={city} value={city} disabled={city === from}>
-                {city}
+            {cities?.map((city) => (
+              <option
+                key={city.id}
+                value={city.id}
+                disabled={city.id === from}
+              >
+                {city.name}
               </option>
             ))}
           </select>
@@ -80,6 +82,7 @@ export function SearchForm() {
             type="date"
             className={fieldClass}
             value={date}
+            min={today}
             onChange={(e) => setDate(e.target.value)}
             required
           />
@@ -91,23 +94,6 @@ export function SearchForm() {
         >
           Search trips
         </button>
-      </div>
-
-      <div className="mt-6 flex flex-wrap items-center gap-4 text-sm">
-        <span className="text-neutral-500">Popular routes:</span>
-        {popularRoutes.map((route) => (
-          <button
-            key={`${route.from}-${route.to}`}
-            type="button"
-            onClick={() => {
-              setFrom(route.from);
-              setTo(route.to);
-            }}
-            className="font-medium text-neutral-900 underline decoration-yellow-400 decoration-2 underline-offset-4 transition hover:text-neutral-600"
-          >
-            {route.from} → {route.to}
-          </button>
-        ))}
       </div>
     </form>
   );
