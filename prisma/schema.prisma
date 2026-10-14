@@ -1,31 +1,38 @@
-// Prisma schema for Better Auth
-// learn more: https://better-auth.com/docs/concepts/database
+// Prisma schema for Journey For All (JFA) intercity bus ticketing
+// Auth models (User, Session, Account, Verification) are owned by Better Auth.
+// Domain models follow docs/SPEC.md section 8.
+// Prisma fields are camelCase, tables are snake_case via @@map.
 
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
 
-// NOTE: When using mysql or sqlserver, uncomment the //@db.Text annotations in model Account below
-// Further reading:
-// https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model Post {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ---------------------------------------------------------------------------
+// Enums (SPEC 8.3)
+// ---------------------------------------------------------------------------
 
-  createdBy   User   @relation(fields: [createdById], references: [id])
-  createdById String
-
-  @@index([name])
+enum Role {
+  PASSENGER
+  ADMIN
 }
+
+// Only CONFIRMED is used in the MVP. The rest are reserved.
+enum BookingStatus {
+  CONFIRMED
+  PENDING_PAYMENT
+  CANCELLED
+  NO_SHOW
+}
+
+// ---------------------------------------------------------------------------
+// Auth (SPEC 8.1)
+// ---------------------------------------------------------------------------
 
 model User {
   id            String    @id
@@ -35,9 +42,16 @@ model User {
   image         String? //@db.Text
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
-  sessions      Session[]
-  accounts      Account[]
-  posts         Post[]
+
+  // Our fields, not Better Auth's
+  role     Role   @default(PASSENGER)
+  isActive Boolean @default(true)
+  phone    String?
+
+  sessions Session[]
+  accounts Account[]
+  bookings Booking[]
+  holds    SeatHold[]
 
   @@unique([email])
   @@map("user")
@@ -48,7 +62,7 @@ model Session {
   expiresAt DateTime
   token     String
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
   ipAddress String? //@db.Text
   userAgent String? //@db.Text
   userId    String
@@ -86,4 +100,184 @@ model Verification {
   updatedAt  DateTime @default(now()) @updatedAt
 
   @@map("verification")
+}
+
+// ---------------------------------------------------------------------------
+// Domain (SPEC 8.2)
+// ---------------------------------------------------------------------------
+
+model City {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  originRoutes Route[] @relation("RouteOrigin")
+  destRoutes   Route[] @relation("RouteDest")
+
+  @@map("cities")
+}
+
+model BusType {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  buses Bus[]
+
+  @@map("bus_types")
+}
+
+model Bus {
+  id          String   @id @default(cuid())
+  name        String
+  plateNumber String   @unique
+  capacity    Int
+  busTypeId   String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  busType   BusType    @relation(fields: [busTypeId], references: [id])
+  seats     Seat[]
+  schedules Schedule[]
+
+  @@map("buses")
+}
+
+// Seat numbers are 1..capacity. Occupancy is per schedule, not per seat,
+// so there is no status column here (SPEC 8.2).
+model Seat {
+  id         String   @id @default(cuid())
+  busId      String
+  seatNumber Int
+  createdAt  DateTime @default(now())
+
+  bus          Bus           @relation(fields: [busId], references: [id], onDelete: Cascade)
+  bookingSeats BookingSeat[]
+  holds        SeatHold[]
+
+  @@unique([busId, seatNumber])
+  @@index([busId])
+  @@map("seats")
+}
+
+// A route is an ordered pair of cities. baseFare is the fare for the whole
+// MVP; schedules carry no override (SPEC 9).
+model Route {
+  id              String   @id @default(cuid())
+  originCityId    String
+  destCityId      String
+  durationMinutes Int
+  baseFare        Decimal  @db.Decimal(10, 2)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  originCity City      @relation("RouteOrigin", fields: [originCityId], references: [id])
+  destCity   City      @relation("RouteDest", fields: [destCityId], references: [id])
+  schedules  Schedule[]
+
+  @@unique([originCityId, destCityId])
+  @@index([originCityId, destCityId])
+  @@map("routes")
+}
+
+// travelDate is the day of the trip. departureTime and arrivalTime are
+// wall-clock times on that day, so a trip can depart after midnight relative
+// to its travelDate.
+model Schedule {
+  id            String   @id @default(cuid())
+  busId         String
+  routeId       String
+  travelDate    DateTime @db.Date
+  departureTime DateTime @db.Time
+  arrivalTime   DateTime @db.Time
+  isCancelled   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  bus          Bus          @relation(fields: [busId], references: [id])
+  route        Route        @relation(fields: [routeId], references: [id])
+  bookings     Booking[]
+  bookingSeats BookingSeat[]
+  holds        SeatHold[]
+
+  @@unique([busId, travelDate, departureTime])
+  @@index([routeId, travelDate])
+  @@map("schedules")
+}
+
+// Bookings are never deleted. unitFare and totalAmount are snapshots taken at
+// confirm time, so later route fare edits leave old tickets alone (SPEC 9).
+model Booking {
+  id               String        @id @default(cuid())
+  userId           String
+  scheduleId       String
+  bookingReference String        @unique
+  unitFare         Decimal       @db.Decimal(10, 2)
+  totalAmount      Decimal       @db.Decimal(10, 2)
+  status           BookingStatus @default(CONFIRMED)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id])
+  schedule Schedule      @relation(fields: [scheduleId], references: [id])
+  seats    BookingSeat[]
+
+  @@index([userId])
+  @@index([scheduleId])
+  @@map("bookings")
+}
+
+// UNIQUE(scheduleId, seatId) here is what stops a seat being double-booked
+// (SPEC 8.6).
+model BookingSeat {
+  id             String   @id @default(cuid())
+  bookingId      String
+  scheduleId     String
+  seatId         String
+  passengerName  String
+  passengerEmail String
+  passengerPhone String
+  createdAt      DateTime @default(now())
+
+  booking  Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  schedule Schedule @relation(fields: [scheduleId], references: [id])
+  seat     Seat     @relation(fields: [seatId], references: [id])
+
+  @@unique([scheduleId, seatId])
+  @@index([bookingId])
+  @@index([seatId])
+  @@map("booking_seats")
+}
+
+// Holds expire by comparison on expiresAt, not by deletion (SPEC 12). The
+// unique constraint also stops two users holding the same seat at once.
+model SeatHold {
+  id         String   @id @default(cuid())
+  scheduleId String
+  seatId     String
+  userId     String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  seat     Seat     @relation(fields: [seatId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, seatId])
+  @@index([scheduleId])
+  @@index([expiresAt])
+  @@map("seat_holds")
+}
+
+// One row per day, bumped inside the confirm transaction to mint
+// BK-YYYYMMDD-NNNNNN references (SPEC 10).
+model BookingCounter {
+  date       DateTime @id @db.Date
+  lastNumber Int      @default(0)
+
+  @@map("booking_counters")
 }
