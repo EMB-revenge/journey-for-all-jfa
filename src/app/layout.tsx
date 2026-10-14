@@ -6,8 +6,13 @@ import { Geist } from "next/font/google";
 import { TRPCReactProvider } from "~/trpc/react";
 
 export const metadata: Metadata = {
-  title: "waypoint",
+  title: "JFA Transit",
   description: "Intercity bus booking, made simple.",
+  icons: {
+    icon: "/Logo.png",
+    shortcut: "/Logo.png",
+    apple: "/Logo.png",
+  },
 };
 
 const geist = Geist({
