@@ -21,16 +21,12 @@ import { db } from "~/server/db";
 const BUS_TYPES = ["ORDINARY", "AIRCON"];
 
 const CITIES = [
-  "Cebu City",
-  "Bacolod",
-  "Iloilo",
-  "Davao",
-  "Tacloban",
-  "Tagbilaran",
-  "Dumaguete",
-  "Cagayan de Oro",
-  "Zamboanga",
-  "Butuan",
+  "Passi City, Iloilo",
+  "Roxas City, Capiz",
+  "Iloilo City, Iloilo",
+  "Kalibo, Aklan",
+  "San Jose de Buenavista, Antique",
+
 ];
 
 const MIN_PASSWORD_LENGTH = 8;
