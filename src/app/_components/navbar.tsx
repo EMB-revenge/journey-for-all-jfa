@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 const links = [
@@ -10,10 +11,14 @@ export function Navbar() {
     <header className="bg-neutral-950">
       <nav className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-400 text-lg font-bold text-black">
-            logo
-          </span>
-          <span className="text-xl font-semibold text-white">Website name</span>
+          <Image
+            src="/Logo.png"
+            alt="Logo"
+            width={64}
+            height={64}
+            className="h-10 w-10 rounded-xl object-cover"
+          />
+          <span className="text-xl font-semibold text-white">JFA Transit</span>
         </Link>
 
         <ul className="items-center gap-8 md:flex">
