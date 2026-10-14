@@ -1,29 +1,103 @@
-# Create T3 App
+# Journey For All (JFA)
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+One-way intercity bus booking and ticketing. Passengers search a route, pick seats, and get a digital ticket. Admins manage cities, buses, routes, schedules, and read every booking.
 
-## What's next? How do I make an app with this?
+Class project for the web development module: React with Next.js App Router, tRPC, Prisma, PostgreSQL, Better Auth, Zod.
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+## Stack
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+| Layer | Tool |
+| --- | --- |
+| App | Next.js 15 (App Router), React 19, TypeScript |
+| API | tRPC v11 with Zod inputs |
+| Data | PostgreSQL through Prisma 6 |
+| Auth | Better Auth, email and password, httpOnly cookie sessions |
+| Styling | Tailwind CSS v4 |
+| Hosting | Vercel (app), Railway (database) |
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+## Prerequisites
 
-## Learn More
+- Node.js 20 or newer
+- Docker Desktop or Podman Desktop for the local database. On Windows, run the script from WSL
+- A Railway PostgreSQL connection string for production, optional for local work
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+## Local setup
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+```bash
+npm install
+cp .env.example .env
+```
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+Generate a session secret and paste it into `.env`:
 
-## How do I deploy this?
+```bash
+openssl rand -base64 32
+```
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+Then fill in the admin seed variables (`ADMIN_1_EMAIL` and friends, one set per admin).
+
+Start the database, migrate, seed, and run:
+
+```bash
+./start-database.sh        # Postgres container on 5432, Windows needs WSL
+npm run db:generate        # prisma migrate dev, creates and applies migrations
+npm run db:seed            # bus types, cities, three admins
+npm run dev
+```
+
+App runs at http://localhost:3000. Seeded admins can sign in at `/login`.
+
+Note: `npm run db:generate` runs `prisma migrate dev` despite the name. `npm run db:migrate` runs `prisma migrate deploy`, which is what production uses.
+
+## Scripts
+
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Next dev server with Turbopack |
+| `npm run build` | Production build |
+| `npm run start` | Serve the production build |
+| `npm run db:generate` | Create and apply a migration (development) |
+| `npm run db:migrate` | Apply migrations (production) |
+| `npm run db:seed` | Seed bus types, cities, admins |
+| `npm run db:studio` | Prisma Studio |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | ESLint |
+| `npm run format:write` | Prettier |
+
+## Project layout
+
+```
+prisma/           schema, migrations, seed
+src/app/          routes: passenger pages, admin pages, two API handlers
+src/components/   shared UI, including the seat grid
+src/context/      AuthProvider, BookingFlowProvider
+src/reducers/     booking flow reducer
+src/lib/          Zod schemas and helpers
+src/server/       Prisma client, Better Auth, tRPC context and routers
+src/middleware.ts admin route guard
+docs/             spec, PRD, brief, implementation plan
+```
+
+## Docs
+
+| File | What it covers |
+| --- | --- |
+| [docs/SPEC.md](docs/SPEC.md) | Source of truth: data model, fares, holds, procedures, auth, deployment, locked decisions |
+| [docs/PRD.md](docs/PRD.md) | Product scope, requirements, success metrics |
+| [docs/TEAM-BRIEF.md](docs/TEAM-BRIEF.md) | One-page shared picture and working agreements |
+| [docs/IMPLEMENTATION-PLAN.md](docs/IMPLEMENTATION-PLAN.md) | Build phases in order |
+| [docs/passenger_flow.mermaid](docs/passenger_flow.mermaid) | Booking flow diagram |
+| [docs/ticket_sample.txt](docs/ticket_sample.txt) | Digital ticket layout reference |
+
+## Deployment
+
+1. Create a PostgreSQL database on Railway and copy its connection string
+2. Import the repo into Vercel, keep the root directory at the repo root, framework preset Next.js
+3. Add `DATABASE_URL`, `BETTER_AUTH_SECRET`, and the six admin seed variables
+4. Release step: `npm run db:migrate`, then `npm run db:seed`
+
+UI and API share a domain, so there is no CORS configuration.
+
+## Team
+
+Fletcher, Joe, Amiel.

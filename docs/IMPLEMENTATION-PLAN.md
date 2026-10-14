@@ -70,9 +70,9 @@ Cleanup belongs to the first two phases: demo `Post` model and router, GitHub OA
 **Pages:** `/` search, `/results`.
 
 1. Search form: origin and destination selects from `city.list`, date input with `min` set to today, passenger count 1–6, Zod validated
-2. `schedule.search`: match route and date, exclude cancelled and departed trips, resolve `fareOverride ?? baseFare`, count free seats as capacity minus booking seats minus active holds, keep only trips with `availableSeats >= passengers`
+2. `schedule.search`: match route and date, exclude cancelled and departed trips, use the route's `baseFare`, count free seats as capacity minus booking seats minus active holds, keep only trips with `availableSeats >= passengers`
 3. Opportunistic hold cleanup inside this procedure: delete expired `SeatHold` rows for the schedules it read
-4. Results cards: bus name, type, departure and arrival, fare, seats remaining, link to the seat map
+4. Results cards: bus name, type (Aircon or Ordinary / non-aircon), departure and arrival, fare, seats remaining, link to the seat map
 
 **Done when:** Cebu to Bacolod on a future date for 2 passengers lists only trips with at least 2 free seats and shows the resolved fare; yesterday's date is rejected.
 
@@ -82,8 +82,8 @@ Cleanup belongs to the first two phases: demo `Post` model and router, GitHub OA
 
 **Page:** `/booking/seat-map`. **State:** `BookingFlowProvider` + `bookingFlowReducer`.
 
-1. `schedule.seats`: derive `AVAILABLE` / `RESERVED` / `OCCUPIED`, add `reservedByMe`, opportunistic expired-hold delete
-2. Grid of numbered seats, colour-coded, `RESERVED` and `OCCUPIED` not clickable
+1. `schedule.seats`: derive two-state `AVAILABLE` / `OCCUPIED` (booked or actively held both read as occupied), opportunistic expired-hold delete
+2. Grid of numbered seats, two-state styling, `OCCUPIED` not clickable
 3. Local selection of exactly N seats, N from search; Continue disabled until the count matches
 4. Continue calls `hold.create` with all seat ids in one batch, stores `expiresAt` in the reducer, then routes to `/booking/passengers`
 5. Countdown timer from `expiresAt`, visible on the passenger and summary pages; on zero, release and return to the seat map
@@ -110,11 +110,11 @@ Cleanup belongs to the first two phases: demo `Post` model and router, GitHub OA
 
 ## Phase 7 — Admin
 
-**Pages:** `/admin` dashboard, `/admin/cities`, `/admin/buses`, `/admin/routes`, `/admin/schedules`, `/admin/bookings`.
+**Pages:** `/admin` redirects to `/admin/cities`; `/admin/cities`, `/admin/buses`, `/admin/routes`, `/admin/schedules`, `/admin/bookings` in a shared sidebar layout, no dashboard home.
 
 1. `admin.city.*`, `admin.route.*`: full CRUD, duplicates return `CONFLICT`
 2. `admin.bus.create` creates seats `1..capacity` in the same transaction as the bus
-3. `admin.schedule.*`: create, edit, `fareOverride` nullable, cancel with `isCancelled`, no hard delete once bookings exist
+3. `admin.schedule.*`: create, edit, cancel with `isCancelled`, no fare field, no hard delete once bookings exist
 4. Buses, routes, and cities deactivate with `isActive = false` instead of disappearing
 5. `admin.booking.list`: read-only, filter by date and route, no edit, no delete
 

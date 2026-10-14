@@ -26,7 +26,7 @@ A web app for booking one-way intercity bus trips: search, pick seats, enter pas
 - Admin CRUD for cities, buses, routes, schedules; view all bookings
 - Accurate seat availability (no double-booking)
 - Unique sequential booking references
-- Hybrid fares with a snapshot on each booking
+- Fixed route fares with a snapshot stored on each booking
 
 ### Explicitly out of MVP
 
@@ -53,7 +53,7 @@ A web app for booking one-way intercity bus trips: search, pick seats, enter pas
 | Role | How created | What they do |
 | --- | --- | --- |
 | Passenger | Self sign-up, `role` defaults to `PASSENGER` | Search, book, view own tickets, change password |
-| Admin | Seeded from env (Fletcher, Joe, Amiel), `role = ADMIN` | Same as passenger plus the admin dashboard |
+| Admin | Seeded from env (Fletcher, Joe, Amiel), `role = ADMIN` | Same as passenger plus the admin sidebar |
 
 One app. `user.role` gates admin pages (`src/middleware.ts`) and admin procedures (`adminProcedure`).
 
@@ -133,8 +133,8 @@ bus_ticketing/
       booking/summary/page.tsx
       booking/ticket/[id]/page.tsx
       my-bookings/page.tsx
-      admin/layout.tsx
-      admin/page.tsx
+      admin/layout.tsx            # sidebar: Cities | Buses | Routes | Schedules | Bookings
+      admin/page.tsx              # redirects to /admin/cities, no dashboard home
       admin/cities/page.tsx
       admin/buses/page.tsx
       admin/routes/page.tsx
@@ -201,11 +201,11 @@ Sign-up inserts `role = PASSENGER` by default. Better Auth generates these four 
 | Model | Table | Fields | Constraints |
 | --- | --- | --- | --- |
 | City | `cities` | `id`, `name` | `name` unique |
-| BusType | `bus_types` | `id`, `name` | seeded `ORDINARY`, `AIRCON` |
+| BusType | `bus_types` | `id`, `name` | seeded `ORDINARY` (non-aircon), `AIRCON` |
 | Bus | `buses` | `id`, `name`, `plateNumber`, `capacity`, `busTypeId`, `isActive` | `plateNumber` unique, `capacity > 0` |
 | Seat | `seats` | `id`, `busId`, `seatNumber` | unique `(busId, seatNumber)`, `seatNumber` 1..N |
 | Route | `routes` | `id`, `originCityId`, `destCityId`, `durationMinutes`, `baseFare`, `isActive` | unique `(originCityId, destCityId)` |
-| Schedule | `schedules` | `id`, `busId`, `routeId`, `travelDate`, `departureTime`, `arrivalTime`, `fareOverride?`, `isCancelled` | unique `(busId, travelDate, departureTime)` |
+| Schedule | `schedules` | `id`, `busId`, `routeId`, `travelDate`, `departureTime`, `arrivalTime`, `isCancelled` | unique `(busId, travelDate, departureTime)` |
 | Booking | `bookings` | `id`, `userId`, `scheduleId`, `bookingReference`, `unitFare`, `totalAmount`, `status`, timestamps | `bookingReference` unique |
 | BookingSeat | `booking_seats` | `id`, `bookingId`, `scheduleId`, `seatId`, `passengerName`, `passengerEmail`, `passengerPhone` | unique `(scheduleId, seatId)` |
 | SeatHold | `seat_holds` | `id`, `scheduleId`, `seatId`, `userId`, `expiresAt` | unique `(scheduleId, seatId)` |
@@ -227,7 +227,7 @@ A seat on a schedule is **available** if:
 - no `BookingSeat` for that `(scheduleId, seatId)`, and
 - no `SeatHold` with `expiresAt > now()` for that pair
 
-Seat status is derived at query time, never stored: `OCCUPIED` (booked), `RESERVED` (active hold), `AVAILABLE`. Holds carry a `reservedByMe` flag when the caller is signed in.
+Seat status is derived at query time, never stored. The seat map shows two states only: `AVAILABLE` or `OCCUPIED`. A seat counts as occupied when it is booked **or** actively held by anyone (holds stay invisible in the UI to keep the map simple). No held-by-me / held-by-other distinction.
 
 ### 8.5 Seat creation
 
@@ -243,15 +243,14 @@ First to confirm still wins after a hold expires, because the constraint does no
 
 ---
 
-## 9. Fare model (hybrid)
+## 9. Fare model (fixed route fare)
 
-1. Route has `baseFare`, the default.
-2. Schedule has optional `fareOverride`. `null` means use `baseFare`.
-3. Resolved fare at search, hold, and book: `fareOverride ?? baseFare`.
-4. On confirm, snapshot `unitFare` = resolved fare and `totalAmount` = `unitFare * seatCount`.
-5. Later admin fare edits never change existing bookings.
+1. Route has `baseFare`. That is the fare, full stop.
+2. Schedules carry no fare override; a schedule always uses its route's `baseFare`.
+3. On confirm, snapshot `unitFare` = route `baseFare` and `totalAmount` = `unitFare * seatCount`.
+4. Later admin fare edits never change existing bookings.
 
-Hybrid over route-only because promos and peak pricing need a per-trip override. Hybrid over schedule-only because re-entering the fare on 50 schedules is error-prone.
+Fixed route-only fare because per-trip overrides add admin UI and testing cost the MVP does not need. The snapshot on the booking stays so old tickets never change price.
 
 ---
 
@@ -267,7 +266,7 @@ Format `BK-YYYYMMDD-NNNNNN`, generated in the backend during the confirm transac
 
 ```
 Login → Search (origin, dest, date >= today, passengers 1-6)
-     → Results (enough free seats, resolved fare, bus type)
+     → Results (enough free seats, route base fare, bus type)
      → Seat map (pick exactly N locally)
      → Continue → hold.create (batch, 5 min) → countdown
      → Passenger form per seat → summary
@@ -330,8 +329,8 @@ Auth lives in Better Auth's own routes. Everything below is a procedure. All inp
 | --- | --- | --- | --- | --- |
 | `city.list` | public | none | cities | |
 | `busType.list` | public | none | bus types | |
-| `schedule.search` | public | `{ originCityId, destCityId, date, passengers }` | schedules with `resolvedFare` and `availableSeats`, filtered to `availableSeats >= passengers` | `INPUT_PARSE_ERROR` |
-| `schedule.seats` | public | `{ scheduleId }` | seats with `status` and `reservedByMe`, plus `holdExpiresAt` when the caller holds them | `NOT_FOUND` |
+| `schedule.search` | public | `{ originCityId, destCityId, date, passengers }` | schedules with route `baseFare` and `availableSeats`, filtered to `availableSeats >= passengers` | `INPUT_PARSE_ERROR` |
+| `schedule.seats` | public | `{ scheduleId }` | seats with two-state `status` (`AVAILABLE` / `OCCUPIED`, held seats read as occupied) | `NOT_FOUND` |
 | `hold.create` | protected | `{ scheduleId, seatIds: 1..6 }` | `{ expiresAt }` | `CONFLICT` + `takenSeats` |
 | `hold.release` | protected | `{ scheduleId, seatIds? }` | `{ released }` | |
 | `booking.confirm` | protected | `{ scheduleId, passengers: [{ seatId, name, email, phone }] }` | booking, seats, ticket payload | `CONFLICT` + `takenSeats` or `reason: "HOLD_EXPIRED"`, `PRECONDITION_FAILED` for a departed or cancelled schedule |
@@ -340,7 +339,7 @@ Auth lives in Better Auth's own routes. Everything below is a procedure. All inp
 | `admin.city.*` | admin | CRUD | | `CONFLICT` on duplicate name |
 | `admin.bus.*` | admin | CRUD, creates seats on create | | `CONFLICT` on duplicate plate |
 | `admin.route.*` | admin | CRUD | | `CONFLICT` on duplicate origin/dest |
-| `admin.schedule.*` | admin | CRUD, `fareOverride` nullable | | `CONFLICT` on duplicate bus/date/time |
+| `admin.schedule.*` | admin | CRUD, no fare field | | `CONFLICT` on duplicate bus/date/time |
 | `admin.booking.list` | admin | optional date and route filters | all bookings | |
 
 Bookings are read-only for admins. Cancelling a schedule sets `isCancelled`.
@@ -349,7 +348,7 @@ Bookings are read-only for admins. Cancelling a schedule sets `isCancelled`.
 
 ## 15. Admin flow
 
-Login → dashboard → manage cities, buses, routes, schedules → view all bookings.
+Login → sidebar (Cities | Buses | Routes | Schedules | Bookings), no separate dashboard home. `/admin` redirects to the first section. Each of Cities, Buses, Routes, Schedules uses one pattern: table of records, "Add" button opens a form, Edit/Deactivate per row. Bookings is a read-only table with date/route filters.
 
 Creating a bus creates its seats in the same transaction. Deleting is limited to records with no dependencies; anything referenced by a schedule or booking gets `isActive = false` or `isCancelled = true` instead.
 
@@ -359,13 +358,13 @@ Creating a bus creates its seats in the same transaction. Deleting is limited to
 
 **Passenger:** `/` search, `/login`, `/register`, `/change-password`, `/booking/seat-map`, `/booking/passengers`, `/booking/summary`, `/booking/ticket/[id]`, `/my-bookings`
 
-**Admin:** `/admin` dashboard, `/admin/cities`, `/admin/buses`, `/admin/routes`, `/admin/schedules`, `/admin/bookings`
+**Admin:** `/admin` redirects to `/admin/cities`; `/admin/cities`, `/admin/buses`, `/admin/routes`, `/admin/schedules`, `/admin/bookings`
 
 - `src/app/layout.tsx` holds the shared shell and `AuthProvider`. Admin links render only when `session.user.role === "ADMIN"`
 - Pages that read the session or run mutations are client components. Search and results can be server components that call procedures through the server caller
 - Booking flow state lives in `BookingFlowProvider` + `bookingFlowReducer`: selected schedule, passenger count, selected seats, hold expiry, per-seat passenger forms. It survives the route changes between seat map, passengers, and summary
 - The hold countdown is a client timer seeded from `expiresAt`
-- Styling is Tailwind, functional. The seat map is a numbered grid, color-coded by `status`
+- Styling is Tailwind, functional. The seat map is a numbered grid with two states: available vs occupied (held seats render as occupied)
 
 ---
 
@@ -391,7 +390,7 @@ tRPC returns HTTP 200 with a typed error body, so the UI branches on `error.data
 Manual, in this order:
 
 1. Register → verify email → log in → log out → change password
-2. Search a route with 2 passengers → results show resolved fare and enough free seats
+2. Search a route with 2 passengers → results show the route base fare and enough free seats
 3. Hold 2 seats → countdown runs → confirm → ticket shows the snapshot fare
 4. Two browsers, same seat: the second Continue fails with `takenSeats`
 5. Let a hold expire → the seat becomes bookable again
@@ -443,12 +442,12 @@ Branches: `main` is production, `dev` is integration, features branch off `dev`.
 4. Change password for every signed-in user, revoking other sessions
 5. Search and book today and future only, no departed trips
 6. Availability mismatch returns a conflict; the seat map refreshes. Never a silent partial booking
-7. Fare snapshot on the booking (`unitFare` + `totalAmount`)
-8. Multi-seat with details per seat, maximum 6
+7. Fare snapshot on the booking (`unitFare` + `totalAmount`), always from the route's `baseFare`
+8. Multi-seat with details per seat (one name, email, phone per seat), maximum 6
 9. One-way only
 10. No cancellation in the MVP
 11. Auto-confirm, no payment step
-12. Bus types are Ordinary and Aircon
+12. Bus types are Ordinary (non-aircon) and Aircon only
 13. Cities are their own table
 14. Sequential seat numbers, booking reference `BK-YYYYMMDD-NNNNNN`
 15. One deployable, not a monorepo with a separate API service
