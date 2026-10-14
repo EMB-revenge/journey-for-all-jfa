@@ -13,6 +13,9 @@
 /prisma/db.sqlite-journal
 db.sqlite
 
+# prisma client output (schema.prisma sets output = "../generated/prisma")
+/generated
+
 # next.js
 /.next/
 /out/

@@ -12,7 +12,7 @@ A one-way intercity bus booking site.
 
 Passenger: register → search (from, to, date, 1–6 people) → pick a trip → pick seats → 5-minute hold with countdown → one name, email, and phone per seat → confirm → digital ticket → My Bookings.
 
-Admin: manage cities, buses, routes, schedules; read all bookings.
+Admin: sidebar (Cities | Buses | Routes | Schedules | Bookings), no dashboard home; read all bookings.
 
 **Not in MVP:** payments, cancellation, no-show, round trips, discounts, GPS, SMS, social login.
 
@@ -39,7 +39,7 @@ Scaffolded with `create-t3-app` on 2026-09-30. No second service, no CORS setup,
 1. **A seat is free** only if nobody booked it and nobody holds it unexpired on that trip
 2. **Never double-book.** Unique constraint on `(scheduleId, seatId)`, and confirm runs in one Prisma transaction. Two people confirming at the same instant still produce one booking
 3. **Hold on Continue**, not on each seat click. Five minutes, countdown in the UI, expiry enforced by comparing `expiresAt` to now
-4. **Fare:** route has a base, schedule can override, and the **booking stores a snapshot** (`unitFare` + `totalAmount`). Old tickets never change price
+4. **Fare:** the route's `baseFare` is the fare. The **booking stores a snapshot** (`unitFare` + `totalAmount`). Old tickets never change price
 5. **Search:** today and future only, hide departed and cancelled trips, only show trips with enough free seats
 6. **Admins** are the three of us, seeded from env. Passengers self-register. The role lives on `user` and is checked in `adminProcedure`, not just in the UI
 7. **Never delete a booking.** Use statuses and soft flags. `BETTER_AUTH_SECRET` and the database URL stay server-side
@@ -55,7 +55,7 @@ Scaffolded with `create-t3-app` on 2026-09-30. No second service, no CORS setup,
 | Auth | Sign-in and register pages, change password, admin route guard, role on the session |
 | tRPC foundation | Delete the demo router, add `adminProcedure`, shared Zod schemas in `src/lib` |
 | Search + results | City dropdowns, date and passenger inputs, schedule cards |
-| Seat map + holds | Numbered grid, Continue creates the hold, countdown, expiry handling |
+| Seat map + holds | Numbered grid (available vs occupied), Continue creates the hold, countdown, expiry handling |
 | Checkout + ticket | Per-seat forms, summary, confirm transaction, ticket, My Bookings |
 | Admin screens | Cities, buses with auto-created seats, routes, schedules, bookings list |
 
