@@ -26,7 +26,6 @@ const CITIES = [
   "Iloilo City, Iloilo",
   "Kalibo, Aklan",
   "San Jose de Buenavista, Antique",
-
 ];
 
 const MIN_PASSWORD_LENGTH = 8;
