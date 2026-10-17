@@ -18,32 +18,37 @@ Class project for the web development module: React with Next.js App Router, tRP
 ## Prerequisites
 
 - Node.js 20 or newer
-- Docker Desktop or Podman Desktop for the local database. On Windows, run the script from WSL
+- PostgreSQL 15 or newer, installed locally and running on port 5432
 - A Railway PostgreSQL connection string for production, optional for local work
 
 ## Local setup
 
-```bash
+Everyone runs their own local database, so each clone needs its own `.env`.
+
+```powershell
 npm install
-cp .env.example .env
+Copy-Item .env.example .env
 ```
 
-Generate a session secret and paste it into `.env`:
+Three values in `.env` are per developer:
 
-```bash
-openssl rand -base64 32
-```
+| Variable | Set it to |
+| --- | --- |
+| `DATABASE_URL` | your local Postgres password instead of `password` |
+| `BETTER_AUTH_SECRET` | any random string, generate with `openssl rand -base64 32` |
+| `ADMIN_1_EMAIL`, `ADMIN_1_PASSWORD` | your own email, and a password of 8 characters or more |
 
-Then fill in the admin seed variables (`ADMIN_1_EMAIL` and friends, one set per admin).
+Use your own email in `ADMIN_1_EMAIL` so you sign in as yourself. The rest of `DATABASE_URL` is the same on every machine: user `postgres`, port `5432`, database `bus_ticketing`.
 
-Start the database, migrate, seed, and run:
+Then create the schema, load the reference data, and run:
 
-```bash
-./start-database.sh        # Postgres container on 5432, Windows needs WSL
-npm run db:generate        # prisma migrate dev, creates and applies migrations
+```powershell
+npm run db:generate        # prisma migrate dev, creates the database, then its migrations
 npm run db:seed            # bus types, cities, three admins
 npm run dev
 ```
+
+`db:generate` creates the `bus_ticketing` database when it is missing, so there is no separate `CREATE DATABASE` step. `.env` is gitignored, which is why it does not come down with `git clone`. Local data differs from machine to machine; `prisma/migrations/` is what keeps every schema identical.
 
 App runs at http://localhost:3000. Seeded admins can sign in at `/login`.
 
@@ -91,10 +96,36 @@ docs/             spec, PRD, brief, implementation plan
 
 ## Deployment
 
-1. Create a PostgreSQL database on Railway and copy its connection string
+1. Create a PostgreSQL database on Railway. Railway shows two URLs: `DATABASE_URL` on the internal network, and `DATABASE_PUBLIC_URL` through its proxy. Vercel runs outside Railway, so copy the public one
 2. Import the repo into Vercel, keep the root directory at the repo root, framework preset Next.js
-3. Add `DATABASE_URL`, `BETTER_AUTH_SECRET`, and the six admin seed variables
-4. Release step: `npm run db:migrate`, then `npm run db:seed`
+3. Set these variables before the first deploy. `src/env.js` validates them during `next build`, and a missing `BETTER_AUTH_SECRET` fails the build
+
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | the Railway public URL |
+| `BETTER_AUTH_SECRET` | generate a separate secret for production |
+| `BETTER_AUTH_URL` | optional, the deployed origin such as `https://your-app.vercel.app` |
+| `ADMIN_1_EMAIL`, `ADMIN_1_PASSWORD` and the other two sets | real admin accounts, needed only if the seed runs during deploy |
+
+4. Release step, run from a laptop with the production values in the shell:
+
+```powershell
+$env:DATABASE_URL="postgresql://postgres:<password>@<host>.proxy.rlwy.net:<port>/railway"
+$env:ADMIN_1_EMAIL="<admin 1 email>"
+$env:ADMIN_1_PASSWORD="<admin 1 real password>"
+$env:ADMIN_2_EMAIL="<admin 2 email>"
+$env:ADMIN_2_PASSWORD="<admin 2 real password>"
+$env:ADMIN_3_EMAIL="<admin 3 email>"
+$env:ADMIN_3_PASSWORD="<admin 3 real password>"
+npm run db:migrate
+npm run db:seed
+```
+
+Use real admin passwords here. Bus types and cities upsert on a re-run, but an admin that already exists keeps its password, so whichever password reaches production first is permanent. To change it later, sign in as that admin and use `/change-password`. To pick up a new password from `.env` locally, run `npx prisma migrate reset`, which drops the local database and re-seeds it.
+
+Shell variables take precedence over `.env`, so your local `.env` stays untouched. Never run `npm run db:generate` against production: it runs `prisma migrate dev`, which can decide the database has drifted and offer to reset it, dropping data. `npm run db:migrate` runs `prisma migrate deploy` and only applies pending migrations.
+
+If Vercel reports `too many connections`, append `?connection_limit=1` to the production `DATABASE_URL`. Each function instance opens its own Prisma pool, and a small Railway instance caps connections low.
 
 UI and API share a domain, so there is no CORS configuration.
 

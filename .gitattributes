@@ -13,6 +13,3 @@
 *.woff binary
 *.woff2 binary
 *.mp4 binary
-
-# Shell scripts must keep LF or they break under WSL.
-*.sh text eol=lf

@@ -27,7 +27,7 @@ Admin: sidebar (Cities | Buses | Routes | Schedules | Bookings), no dashboard ho
 | Data | PostgreSQL through Prisma 6 |
 | Auth | Better Auth, email and password, httpOnly cookie sessions |
 | Styling | Tailwind CSS v4 |
-| Local DB | Postgres in Docker via `start-database.sh` |
+| Local DB | PostgreSQL installed locally, one instance per developer |
 | Hosting | Vercel for the app, Railway for the database |
 
 Scaffolded with `create-t3-app` on 2026-09-30. No second service, no CORS setup, no separate API to deploy.

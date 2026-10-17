@@ -72,7 +72,7 @@ One app. `user.role` gates admin pages (`src/middleware.ts`) and admin procedure
 | Auth | Better Auth | Email/password is a first-class feature with Argon2id hashing and database sessions. Its NextAuth competitor is in maintenance mode and its credentials provider is the weakest path (JWT-only sessions, manual type augmentation) |
 | Session | httpOnly cookie, database-backed | Removes the XSS exposure of the earlier JWT-in-localStorage plan and allows instant revocation on password change |
 | Styling | Tailwind CSS v4 | Ships configured with the scaffold. Lesson coverage on styling is not graded |
-| Database | PostgreSQL | Prisma migrations and constraints do the work. Local dev in Docker, production on Railway |
+| Database | PostgreSQL | Prisma migrations and constraints do the work. Each developer runs their own local Postgres, production uses Railway |
 
 ### 4.2 How the class lessons land in this stack
 
@@ -159,7 +159,6 @@ bus_ticketing/
   docs/
   .env                     # gitignored
   .env.example
-  start-database.sh        # local Postgres in Docker or Podman
 ```
 
 ---
@@ -320,6 +319,8 @@ Authorization, two layers:
 
 Seeding admins: `prisma/seed.ts` calls `auth.api.signUpEmail` for each of the three admin emails from env, then sets `role = "ADMIN"`. Going through the auth API means the password hash is created correctly. Admin passwords come from env and are never committed.
 
+The seed will not overwrite an existing admin's password, so the password that reaches a database first is the one it keeps. Locally, `npx prisma migrate reset` drops the database, replays the migrations, and re-seeds from `.env`. In production, change the password from `/change-password`, and seed production with real passwords the first time rather than the local test ones.
+
 ---
 
 ## 14. tRPC surface
@@ -412,25 +413,29 @@ Worth unit testing when time allows: fare resolution, availability count, and de
 | Migrations | `npm run db:migrate` (`prisma migrate deploy`) as a release step, then `npm run db:seed` |
 | CORS | None to configure. UI and API share an origin |
 
+Railway exposes `DATABASE_URL` on its internal network and `DATABASE_PUBLIC_URL` through its proxy. Vercel runs outside Railway, so it uses the public URL.
+
 Environment variables:
 
 | Variable | Where | Notes |
 | --- | --- | --- |
-| `DATABASE_URL` | local + Vercel | local points at the Docker container, production at Railway |
-| `BETTER_AUTH_SECRET` | local + Vercel | generate with `openssl rand -base64 32` |
-| `ADMIN_1_EMAIL`, `ADMIN_1_PASSWORD` | local + Vercel | seed only, one set per admin |
+| `DATABASE_URL` | local + Vercel | local points at the developer's own Postgres, production at Railway |
+| `BETTER_AUTH_SECRET` | local + Vercel | generate with `openssl rand -base64 32`; production gets its own |
+| `BETTER_AUTH_URL` | optional | the deployed origin, e.g. `https://your-app.vercel.app`; Better Auth infers the origin when unset |
+| `ADMIN_1_EMAIL`, `ADMIN_1_PASSWORD` | local + Vercel | seed only, one set per admin; use real passwords in production |
 | `ADMIN_2_EMAIL`, `ADMIN_2_PASSWORD` | | |
 | `ADMIN_3_EMAIL`, `ADMIN_3_PASSWORD` | | |
 
 Local setup:
 
 ```bash
-cp .env.example .env      # then fill in BETTER_AUTH_SECRET
-./start-database.sh       # Docker or Podman, Windows needs WSL
-npm run db:generate       # prisma migrate dev, creates the first migration
+cp .env.example .env      # then set the Postgres password, BETTER_AUTH_SECRET, and your admin email
+npm run db:generate       # prisma migrate dev, creates the database and the first migration
 npm run db:seed           # bus types, cities, 3 admins
 npm run dev
 ```
+
+`db:generate` creates the `bus_ticketing` database when it is missing. Local data differs between machines; `prisma/migrations/` is what keeps the schemas identical.
 
 Branches: `main` is production, `dev` is integration, features branch off `dev`.
 

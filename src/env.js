@@ -11,6 +11,9 @@ export const env = createEnv({
       process.env.NODE_ENV === "production"
         ? z.string()
         : z.string().optional(),
+    /** Only needed when absolute URLs must be exact. Better Auth infers the
+     * origin from the request otherwise. */
+    BETTER_AUTH_URL: z.string().url().optional(),
     DATABASE_URL: z.string().url(),
     /**
      * Seed admins, read by prisma/seed.ts only. Optional here so a fresh
@@ -43,6 +46,7 @@ export const env = createEnv({
    */
   runtimeEnv: {
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
     DATABASE_URL: process.env.DATABASE_URL,
     ADMIN_1_EMAIL: process.env.ADMIN_1_EMAIL,
     ADMIN_1_PASSWORD: process.env.ADMIN_1_PASSWORD,
