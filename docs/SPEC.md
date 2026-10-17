@@ -265,10 +265,10 @@ Format `BK-YYYYMMDD-NNNNNN`, generated in the backend during the confirm transac
 ## 11. Passenger flow
 
 ```
-Login → Search (origin, dest, date >= today, passengers 1-6)
+Search (origin, dest, date >= today, passengers 1-6)
      → Results (enough free seats, route base fare, bus type)
      → Seat map (pick exactly N locally)
-     → Continue → hold.create (batch, 5 min) → countdown
+     → Continue → sign in if needed → hold.create (batch, 5 min) → countdown
      → Passenger form per seat → summary
      → Confirm → booking.confirm transaction → digital ticket → My Bookings
 ```
@@ -277,6 +277,7 @@ See `docs/passenger_flow.mermaid` for the diagram, including the expiry and conf
 
 - One-way only, auto-confirmed, no payment step
 - Search hides past dates, departed trips, and cancelled schedules
+- Search, results, and the seat map are public. Continue is the first write, so a signed-out passenger is sent to `/login?redirectTo=...` from there, not before browsing. The seat selection survives the round trip because `BookingFlowProvider` sits in the root layout
 - Holds start on Continue, not on each seat click. Unclicking before Continue is local only
 - Hold expiry or a confirm conflict sends the passenger back to the seat map with a refetch. Never a silent partial booking
 
@@ -360,8 +361,9 @@ Creating a bus creates its seats in the same transaction. Deleting is limited to
 
 **Admin:** `/admin` redirects to `/admin/cities`; `/admin/cities`, `/admin/buses`, `/admin/routes`, `/admin/schedules`, `/admin/bookings`
 
-- `src/app/layout.tsx` holds the shared shell and `AuthProvider`. Admin links render only when `session.user.role === "ADMIN"`
+- `src/app/layout.tsx` holds the shared shell, `AuthProvider`, and `BookingFlowProvider`. Admin links render only when `session.user.role === "ADMIN"`
 - Pages that read the session or run mutations are client components. Search and results can be server components that call procedures through the server caller
+- Auth gate: the navbar carries one neutral `Sign in` action for signed-out visitors, since yellow belongs to the booking path (Search trips, Select seat, Continue, Confirm). Signed-in visitors get an account menu with My bookings, Change password, and Sign out. The write gate itself is at Continue on `/booking/seat-map`
 - Booking flow state lives in `BookingFlowProvider` + `bookingFlowReducer`: selected schedule, passenger count, selected seats, hold expiry, per-seat passenger forms. It survives the route changes between seat map, passengers, and summary
 - The hold countdown is a client timer seeded from `expiresAt`
 - Styling is Tailwind, functional. The seat map is a numbered grid with two states: available vs occupied (held seats render as occupied)

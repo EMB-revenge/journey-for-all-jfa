@@ -35,14 +35,14 @@ Cleanup belongs to the first two phases: demo `Post` model and router, GitHub OA
 
 ---
 
-## Phase 2 — Auth completion
+## Phase 2 — Auth completion (done 2026-10-17)
 
 **Goal:** the whole account story works, and `/admin` is closed to passengers.
 
 1. Remove `socialProviders.github` from `src/server/better-auth/config.ts`, drop the two `BETTER_AUTH_*_GITHUB_*` vars from `src/env.js` and `.env.example`, and uninstall `@auth/prisma-adapter`
 2. Set `emailAndPassword: { enabled: true, minPasswordLength: 8 }`
 3. Build `/register`, `/login`, `/change-password` with Zod schemas from `src/lib/schemas.ts`, using `authClient`
-4. `AuthProvider` in `src/app/layout.tsx` exposing the session via `authClient.useSession()`; admin links render only for `role = ADMIN`
+4. `AuthProvider` in `src/app/layout.tsx` exposing the session via `authClient.useSession()`. Signed-out visitors get one neutral `Sign in`, since yellow is reserved for the booking path; signed-in visitors get an account menu with My bookings, Change password, and Sign out; admin links render only for `role = ADMIN`
 5. Change password passes `revokeOtherSessions: true`, then signs out
 6. `src/middleware.ts`: redirect to `/login` when `/admin/*` is hit without a session cookie
 7. Delete `src/app/page.tsx`'s demo content and `_components/post.tsx`
@@ -74,20 +74,22 @@ Cleanup belongs to the first two phases: demo `Post` model and router, GitHub OA
 3. Opportunistic hold cleanup inside this procedure: delete expired `SeatHold` rows for the schedules it read
 4. Results cards: bus name, type (Aircon or Ordinary / non-aircon), departure and arrival, fare, seats remaining, link to the seat map
 
-**Done when:** Cebu to Bacolod on a future date for 2 passengers lists only trips with at least 2 free seats and shows the resolved fare; yesterday's date is rejected.
+**Done when:** Iloilo City to Roxas City on a future date for 2 passengers lists only trips with at least 2 free seats and shows the resolved fare; yesterday's date is rejected.
 
 ---
 
 ## Phase 5 — Seat map and holds
 
-**Page:** `/booking/seat-map`. **State:** `BookingFlowProvider` + `bookingFlowReducer`.
+**Page:** `/booking/seat-map`. **State:** `BookingFlowProvider` + `bookingFlowReducer`, mounted in the root layout so the selection survives a detour to `/login`.
 
 1. `schedule.seats`: derive two-state `AVAILABLE` / `OCCUPIED` (booked or actively held both read as occupied), opportunistic expired-hold delete
 2. Grid of numbered seats, two-state styling, `OCCUPIED` not clickable
 3. Local selection of exactly N seats, N from search; Continue disabled until the count matches
-4. Continue calls `hold.create` with all seat ids in one batch, stores `expiresAt` in the reducer, then routes to `/booking/passengers`
+4. Continue is the auth gate. A signed-out passenger goes to `/login?redirectTo=` with their seats still selected and comes back to the same map. Then Continue calls `hold.create` with all seat ids in one batch, stores `expiresAt` in the reducer, and routes to `/booking/passengers`
 5. Countdown timer from `expiresAt`, visible on the passenger and summary pages; on zero, release and return to the seat map
 6. `CONFLICT` with `takenSeats`: refetch the map, drop the taken seats from the selection, show which ones went
+
+`TripCard` links to `/trips/${trip.id}/seats` today. Point it at `/booking/seat-map` when this phase lands.
 
 **Done when:** two browsers on the same seat, the second Continue fails and names the seat; the first browser's countdown runs; an expired hold frees the seat.
 

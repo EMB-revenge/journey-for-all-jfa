@@ -54,11 +54,11 @@ Payments, cancellation, no-show and check-in, waitlists, overbooking, round trip
 
 ### 5.1 Registration and Login
 
-Inputs: full name, email, password. The system validates input, rejects duplicate emails, hashes the password, and creates the account with the passenger role. Login with valid credentials lands the passenger on search. Invalid credentials show an error and reveal nothing about whether the email exists. Any signed-in user can change their password with their current one.
+Inputs: full name, email, password. The system validates input, rejects duplicate emails, hashes the password, and creates the account with the passenger role. Login with valid credentials lands the passenger on search. Invalid credentials show an error and reveal nothing about whether the email exists. Any signed-in user can change their password with their current one. An account is not needed to browse: search, results, and the seat map are open, and sign-in is required at the hold step, where the system first writes on the passenger's behalf.
 
 ### 5.2 Search
 
-Inputs: origin city, destination city, travel date, passenger count (1–6). The date cannot be in the past, origin and destination must differ. Results show only trips that have not departed, are not cancelled, and have at least that many free seats. Each result shows departure/arrival times, bus type, fare, and seats remaining.
+Inputs: origin city, destination city, travel date, passenger count (1–6). The date cannot be in the past, origin and destination must differ. Results show only trips that have not departed, are not cancelled, and have at least that many free seats. Each result shows departure/arrival times, bus type, fare, and seats remaining. No account is required to search or to open a seat map.
 
 ### 5.3 Seat Selection
 
@@ -80,7 +80,7 @@ A passenger sees their own bookings with trip details, seat numbers, fare paid, 
 
 Admins manage four entities via the sidebar, each using the same pattern: table of records, "Add" button opens a form, Edit/Delete per row.
 
-- **Cities**: add, edit, deactivate (name, province/region)
+- **Cities**: add, edit, deactivate (name)
 - **Buses**: add, edit, deactivate (name, plate number, capacity, bus type: Aircon or Ordinary / non-aircon). Creating a bus auto-generates its seats (numbered 1..capacity).
 - **Routes**: add, edit, deactivate (origin city, destination city, duration, base fare)
 - **Schedules**: add, edit, deactivate (bus, route, date, departure time, arrival time). **No fare override** — schedule uses the route's base fare.
@@ -94,7 +94,7 @@ Admins see all bookings with passenger and trip details and can filter by date o
 
 **Reliability.** The same seat cannot be sold twice on the same trip, even when two people confirm at the same instant. Booking writes are atomic: a booking never exists without its seats.
 
-**Security.** Passwords are stored hashed and never logged. Authentication is required for booking and for every admin action. Admin screens and admin data are closed to passengers. The admin check runs on the server, not only in the UI.
+**Security.** Passwords are stored hashed and never logged. Authentication is required at the first write, the seat hold, and for every admin action. Admin screens and admin data are closed to passengers. The admin check runs on the server, not only in the UI.
 
 **Performance.** A route and date search returns promptly. Seat maps and countdowns update without a page reload.
 
@@ -102,7 +102,7 @@ Admins see all bookings with passenger and trip details and can filter by date o
 
 ## 7. Flows
 
-**Passenger:** log in → search → results → select trip → select seats → hold with countdown → passenger details → summary → confirm → ticket → My Bookings.
+**Passenger:** search → results → select trip → select seats → sign in → hold with countdown → passenger details → summary → confirm → ticket → My Bookings.
 
 **Admin:** log in → sidebar → manage cities, buses, routes, schedules → review bookings.
 

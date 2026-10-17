@@ -9,14 +9,14 @@
 │   CONTACT: 09123456789                    │
 │   EMAIL: juan@email.com                   │
 │                                           │
-│   ROUTE: Cebu → Bacolod                   │
+│   ROUTE: Iloilo City → Roxas City         │
 │   DATE: September 15, 2026                │
 │   DEPARTURE: 08:00 AM                     │
-│   ARRIVAL: 12:30 PM                       │
+│   ARRIVAL: 10:30 AM                       │
 │   BUS: Unit 101 - Ceres                  │
 │   SEAT: A-12                              │
 │                                           │
-│   FARE: ₱750.00                           │
+│   FARE: ₱250.00                           │
 │   BOOKED ON: Sept 1, 2026 10:30 AM       │
 │                                           │
 │   ┌──────────────────────────┐            │
