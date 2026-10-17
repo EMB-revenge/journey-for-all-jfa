@@ -1,0 +1,18 @@
+# Keep line endings consistent for a mixed Windows and macOS team.
+# Git stores LF and checks out LF, so no more "LF will be replaced by CRLF"
+# warnings and no diff churn from one editor rewriting another's files.
+* text=auto eol=lf
+
+# Binary files. Never convert these.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.mp4 binary
+
+# Shell scripts must keep LF or they break under WSL.
+*.sh text eol=lf
