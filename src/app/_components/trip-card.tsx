@@ -10,17 +10,23 @@ export type TripResult = {
   arrivalTime: Date;
   durationMinutes: number;
   fare: number;
-  seatsLeft: number;
+  availableSeats: number;
 };
 
+function busTypeLabel(value: string): string {
+  if (value === "AIRCON") return "Aircon";
+  if (value === "ORDINARY") return "Ordinary / non-aircon";
+  return value;
+}
+
 export function TripCard({ trip }: { trip: TripResult }) {
-  const soldOut = trip.seatsLeft === 0;
+  const soldOut = trip.availableSeats === 0;
 
   return (
     <div className="flex flex-col gap-6 rounded-2xl border border-neutral-200 bg-white p-6 md:flex-row md:items-center md:justify-between">
       <div>
         <p className="text-sm font-semibold text-neutral-500">
-          {trip.busName} · {trip.busType}
+          {trip.busName} · {busTypeLabel(trip.busType)}
         </p>
         <div className="mt-2 flex items-center gap-4">
           <p className="text-2xl font-bold text-neutral-900">
@@ -46,7 +52,7 @@ export function TripCard({ trip }: { trip: TripResult }) {
               soldOut ? "text-red-600" : "text-neutral-500"
             }`}
           >
-            {soldOut ? "Sold out" : `${trip.seatsLeft} seats left`}
+            {soldOut ? "Sold out" : `${trip.availableSeats} seats left`}
           </p>
         </div>
 

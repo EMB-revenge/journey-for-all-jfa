@@ -5,7 +5,7 @@
 **Team brief:** `docs/TEAM-BRIEF.md`
 
 Phases run in order. Anyone can pick a task inside a phase. Do not start phase N+1 until phase N's "Done when" is true.
-But don't add phases in git commits or PRs(phase 1, 2, 3, etc.)
+
 ---
 
 ## Phase 0 — Scaffold (done 2026-09-30)
@@ -71,14 +71,14 @@ The demo cleanup this phase used to own (`post.ts`, the `Post` model, `_componen
 
 **Pages:** `/` search, `/results`.
 
-Partly built already: `/search`, `SearchForm`, `TripCard`, and a `schedule.search` that matches route and date are in from the early search branch. Reconcile that procedure with SPEC 14 before extending it: its input is `{ fromCityId, toCityId, date }` instead of `{ originCityId, destCityId, date, passengers }`, and it does not yet drop departed trips or clean up expired holds.
+Finished (done 2026-10-19): `/search`, `SearchForm`, `TripCard`, and `schedule.search` are complete. Input reconciled to SPEC 14 `{ originCityId, destCityId, date, passengers }`; departed and cancelled trips excluded; `availableSeats >= passengers` filter applied; expired holds pruned opportunistically; past dates rejected at the API (Asia/Manila).
 
 1. Search form: origin and destination selects from `city.list`, date input with `min` set to today, passenger count 1–6, Zod validated
 2. `schedule.search`: match route and date, exclude cancelled and departed trips, use the route's `baseFare`, count free seats as capacity minus booking seats minus active holds, keep only trips with `availableSeats >= passengers`
 3. Opportunistic hold cleanup inside this procedure: delete expired `SeatHold` rows for the schedules it read
 4. Results cards: bus name, type (Aircon or Ordinary / non-aircon), departure and arrival, fare, seats remaining, link to the seat map
 
-**Done when:** Iloilo City to Roxas City on a future date for 2 passengers lists only trips with at least 2 free seats and shows the resolved fare; yesterday's date is rejected.
+**Done when** (2026-10-19): Iloilo City to Roxas City on a future date for 2 passengers lists only trips with at least 2 free seats and shows the resolved fare; yesterday's date is rejected.
 
 ---
 

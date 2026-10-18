@@ -167,7 +167,7 @@ bus_ticketing/
 
 Scaffolded 2026-09-30 with `create-t3-app` 7.40.0: tRPC v11, Prisma 6 with client output in `generated/prisma`, Tailwind v4, ESLint, Prettier, and Better Auth 1.3 wired with the Prisma adapter and email/password enabled.
 
-Landed since: the domain schema with its first migration and seed (bus types, cities, three admins), the full account story (`/register`, `/login`, `/change-password`, `AuthProvider`, the `/admin` route guard), and the tRPC foundation (`protectedProcedure`, `adminProcedure`, `city.list`, `busType.list`, `admin.booking.list`). `/search` with `schedule.search` came in from an early branch and gets finished in Phase 4.
+Landed since: the domain schema with its first migration and seed (bus types, cities, three admins), the full account story (`/register`, `/login`, `/change-password`, `AuthProvider`, the `/admin` route guard), and the tRPC foundation (`protectedProcedure`, `adminProcedure`, `city.list`, `busType.list`, `admin.booking.list`). `/search` with `schedule.search` came in from an early branch and was finished in Phase 4 (route + date + passengers, departed and cancelled excluded, `availableSeats` filter, Asia/Manila date guard).
 
 The scaffold leftovers are gone: the `Post` model and router, `_components/post.tsx`, `socialProviders.github`, the two `BETTER_AUTH_GITHUB_*` vars, and `@auth/prisma-adapter`.
 
