@@ -5,7 +5,7 @@
 **Team brief:** `docs/TEAM-BRIEF.md`
 
 Phases run in order. Anyone can pick a task inside a phase. Do not start phase N+1 until phase N's "Done when" is true.
-But don't add phases in git commits or PRs(phase 1, 2, 3, etc.)
+
 ---
 
 ## Phase 0 — Scaffold (done 2026-09-30)
