@@ -51,15 +51,17 @@ Cleanup belongs to the first two phases: demo `Post` model and router, GitHub OA
 
 ---
 
-## Phase 3 — tRPC foundation
+## Phase 3 — tRPC foundation (done 2026-10-19)
 
 **Goal:** procedures that know who is calling and what is valid input.
 
-1. Delete `src/server/api/routers/post.ts` and its entry in `root.ts`
-2. Add `adminProcedure` in `src/server/api/trpc.ts`: `protectedProcedure` plus a `role === "ADMIN"` check throwing `FORBIDDEN`
-3. Create `src/lib/schemas.ts` for schemas shared between procedures and forms
-4. `city.list` and `busType.list` public procedures
-5. Error conventions: `CONFLICT` with `takenSeats`, `PRECONDITION_FAILED` for departed or cancelled schedules, `NOT_FOUND` instead of leaking other users' records
+1. Add `adminProcedure` in `src/server/api/trpc.ts`: `protectedProcedure` plus a `role === "ADMIN"` check throwing `FORBIDDEN`
+2. `city.list` and `busType.list` public procedures
+3. `src/lib/schemas.ts` holds the Zod schemas shared by procedures and forms. The auth schemas landed with Phase 2; booking schemas join them as the flow is built
+4. Error conventions: `ConflictPayload` in `src/lib/errors.ts` and the `conflict()` helper in `trpc.ts`, with the scaffold's error formatter copying the payload to `error.data.conflict` so the client can read it typed. `PRECONDITION_FAILED` covers departed or cancelled schedules, and `NOT_FOUND` stands in for another user's record
+5. `admin.booking.list`, read-only and unfiltered, as the first `adminProcedure` consumer. The rest of the admin surface joins it in Phase 7
+
+The demo cleanup this phase used to own (`post.ts`, the `Post` model, `_components/post.tsx`) landed with Phases 1 and 2.
 
 **Done when:** `api.city.list.useQuery()` renders cities on a page, and calling an admin procedure with a passenger session returns `FORBIDDEN`.
 
@@ -68,6 +70,8 @@ Cleanup belongs to the first two phases: demo `Post` model and router, GitHub OA
 ## Phase 4 — Search and results
 
 **Pages:** `/` search, `/results`.
+
+Partly built already: `/search`, `SearchForm`, `TripCard`, and a `schedule.search` that matches route and date are in from the early search branch. Reconcile that procedure with SPEC 14 before extending it: its input is `{ fromCityId, toCityId, date }` instead of `{ originCityId, destCityId, date, passengers }`, and it does not yet drop departed trips or clean up expired holds.
 
 1. Search form: origin and destination selects from `city.list`, date input with `min` set to today, passenger count 1–6, Zod validated
 2. `schedule.search`: match route and date, exclude cancelled and departed trips, use the route's `baseFare`, count free seats as capacity minus booking seats minus active holds, keep only trips with `availableSeats >= passengers`

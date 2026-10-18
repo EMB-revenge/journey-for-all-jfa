@@ -145,7 +145,7 @@ bus_ticketing/
     components/            # shared UI, including the seat grid
     context/               # AuthProvider, BookingFlowProvider
     reducers/              # bookingFlowReducer
-    lib/                   # Zod schemas, fare and availability helpers
+    lib/                   # Zod schemas, conflict payloads, fare and availability helpers
     server/
       db.ts
       better-auth/         # config.ts, server.ts, client.ts, index.ts
@@ -165,18 +165,11 @@ bus_ticketing/
 
 ## 7. Current state of the repo
 
-Scaffolded 2026-09-30 with `create-t3-app` 7.40.0: tRPC v11, Prisma 6 with client output in `generated/prisma`, Tailwind v4, ESLint, Prettier, and Better Auth 1.3 wired with the Prisma adapter and email/password enabled. The tRPC context already resolves the session, and `protectedProcedure` already exists.
+Scaffolded 2026-09-30 with `create-t3-app` 7.40.0: tRPC v11, Prisma 6 with client output in `generated/prisma`, Tailwind v4, ESLint, Prettier, and Better Auth 1.3 wired with the Prisma adapter and email/password enabled.
 
-Delete before building features:
+Landed since: the domain schema with its first migration and seed (bus types, cities, three admins), the full account story (`/register`, `/login`, `/change-password`, `AuthProvider`, the `/admin` route guard), and the tRPC foundation (`protectedProcedure`, `adminProcedure`, `city.list`, `busType.list`, `admin.booking.list`). `/search` with `schedule.search` came in from an early branch and gets finished in Phase 4.
 
-- `Post` model in `prisma/schema.prisma` and its relation on `User`
-- `src/server/api/routers/post.ts` and its entry in `src/server/api/root.ts`
-- `src/app/_components/post.tsx`
-- `socialProviders.github` from `src/server/better-auth/config.ts`
-- `BETTER_AUTH_GITHUB_CLIENT_ID` and `BETTER_AUTH_GITHUB_CLIENT_SECRET` from `src/env.js` and `.env.example`
-- `@auth/prisma-adapter` from `package.json`, unused since Better Auth replaced NextAuth
-
-Not yet done: no migration has run (`prisma/migrations/` does not exist), and no seed script exists.
+The scaffold leftovers are gone: the `Post` model and router, `_components/post.tsx`, `socialProviders.github`, the two `BETTER_AUTH_GITHUB_*` vars, and `@auth/prisma-adapter`.
 
 ---
 

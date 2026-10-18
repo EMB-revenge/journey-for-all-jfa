@@ -1,3 +1,4 @@
+import { adminRouter } from "~/server/api/routers/admin";
 import { busTypeRouter } from "~/server/api/routers/busType";
 import { cityRouter } from "~/server/api/routers/city";
 import { scheduleRouter } from "~/server/api/routers/schedule";
@@ -9,6 +10,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
+  admin: adminRouter,
   busType: busTypeRouter,
   city: cityRouter,
   schedule: scheduleRouter,

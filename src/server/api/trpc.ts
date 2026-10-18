@@ -11,6 +11,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { isConflictPayload, type ConflictPayload } from "~/lib/errors";
 import { auth } from "~/server/better-auth";
 import { db } from "~/server/db";
 
@@ -53,6 +54,9 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
         ...shape.data,
         zodError:
           error.cause instanceof ZodError ? error.cause.flatten() : null,
+        // `cause` is not serialized, so conflict payloads need this slot to
+        // reach the client (SPEC 17).
+        conflict: isConflictPayload(error.cause) ? error.cause : null,
       },
     };
   },
@@ -132,3 +136,28 @@ export const protectedProcedure = t.procedure
       },
     });
   });
+
+/**
+ * Admin procedure
+ *
+ * Builds on `protectedProcedure` with a role check. This is the real gate for
+ * admin data: `src/middleware.ts` only sees the session cookie, so it cannot
+ * know the role.
+ *
+ * @see https://trpc.io/docs/procedures
+ */
+export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.session.user.role !== "ADMIN") {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+  return next();
+});
+
+/**
+ * Throws the seat-conflict error the booking flow expects (SPEC 17). The
+ * payload rides on `cause` and the formatter above copies it to
+ * `error.data.conflict` so the client can read it typed.
+ */
+export function conflict(payload: ConflictPayload): never {
+  throw new TRPCError({ code: "CONFLICT", cause: payload });
+}
