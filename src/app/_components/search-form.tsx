@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { api } from "~/trpc/react";
+import { fieldErrors, searchTripsSchema } from "~/lib/schemas";
+import { todayInManila } from "~/lib/dates";
 
 export function SearchForm() {
   const router = useRouter();
@@ -12,12 +14,32 @@ export function SearchForm() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [date, setDate] = useState("");
+  const [passengers, setPassengers] = useState("1");
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const today = new Date().toLocaleDateString("en-CA");
+  const today = todayInManila();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const params = new URLSearchParams({ from, to, date });
+
+    const parsed = searchTripsSchema.safeParse({
+      originCityId: from,
+      destCityId: to,
+      date,
+      passengers,
+    });
+    if (!parsed.success) {
+      setErrors(fieldErrors(parsed.error));
+      return;
+    }
+    setErrors({});
+
+    const params = new URLSearchParams({
+      from: parsed.data.originCityId,
+      to: parsed.data.destCityId,
+      date: parsed.data.date,
+      passengers: String(parsed.data.passengers),
+    });
     router.push(`/search?${params.toString()}`);
   }
 
@@ -28,8 +50,9 @@ export function SearchForm() {
     <form
       onSubmit={handleSubmit}
       className="rounded-3xl border border-neutral-200 bg-white p-8 shadow-2xl"
+      noValidate
     >
-      <div className="grid gap-4 md:grid-cols-[1fr_1fr_0.7fr_auto] md:items-end">
+      <div className="grid gap-4 md:grid-cols-2 md:items-end lg:grid-cols-[1fr_1fr_0.7fr_0.5fr_auto]">
         <label className="block">
           <span className="mb-2 block text-sm text-neutral-600">From</span>
           <select
@@ -37,7 +60,6 @@ export function SearchForm() {
             value={from}
             onChange={(e) => setFrom(e.target.value)}
             disabled={isLoading}
-            required
           >
             <option value="" disabled>
               {isLoading ? "Loading cities..." : "Select departure city"}
@@ -48,6 +70,11 @@ export function SearchForm() {
               </option>
             ))}
           </select>
+          {errors.originCityId && (
+            <span className="mt-1 block text-sm text-red-600">
+              {errors.originCityId}
+            </span>
+          )}
         </label>
 
         <label className="block">
@@ -57,21 +84,21 @@ export function SearchForm() {
             value={to}
             onChange={(e) => setTo(e.target.value)}
             disabled={isLoading}
-            required
           >
             <option value="" disabled>
               {isLoading ? "Loading cities..." : "Select destination city"}
             </option>
             {cities?.map((city) => (
-              <option
-                key={city.id}
-                value={city.id}
-                disabled={city.id === from}
-              >
+              <option key={city.id} value={city.id} disabled={city.id === from}>
                 {city.name}
               </option>
             ))}
           </select>
+          {errors.destCityId && (
+            <span className="mt-1 block text-sm text-red-600">
+              {errors.destCityId}
+            </span>
+          )}
         </label>
 
         <label className="block">
@@ -84,8 +111,34 @@ export function SearchForm() {
             value={date}
             min={today}
             onChange={(e) => setDate(e.target.value)}
-            required
           />
+          {errors.date && (
+            <span className="mt-1 block text-sm text-red-600">
+              {errors.date}
+            </span>
+          )}
+        </label>
+
+        <label className="block">
+          <span className="mb-2 block text-sm text-neutral-600">
+            Passengers
+          </span>
+          <select
+            className={fieldClass}
+            value={passengers}
+            onChange={(e) => setPassengers(e.target.value)}
+          >
+            {[1, 2, 3, 4, 5, 6].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+          {errors.passengers && (
+            <span className="mt-1 block text-sm text-red-600">
+              {errors.passengers}
+            </span>
+          )}
         </label>
 
         <button

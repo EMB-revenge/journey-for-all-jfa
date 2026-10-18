@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { todayInManila } from "~/lib/dates";
+
 /**
  * Zod schemas shared between tRPC procedures and client forms. Forms parse with
  * these before calling the API, so the same messages show up in both places.
@@ -42,6 +44,20 @@ export const changePasswordSchema = z
     message: "Passwords do not match",
     path: ["confirmPassword"],
   });
+
+export const searchTripsSchema = z.object({
+  originCityId: z.string().min(1),
+  destCityId: z.string().min(1),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a travel date")
+    .refine((v) => v >= todayInManila(), "Travel date cannot be in the past"),
+  passengers: z.coerce
+    .number()
+    .int()
+    .min(1, "At least 1 passenger")
+    .max(6, "At most 6 passengers"),
+});
 
 /** First message per field, for rendering under inputs. */
 export function fieldErrors(error: z.ZodError): Record<string, string> {

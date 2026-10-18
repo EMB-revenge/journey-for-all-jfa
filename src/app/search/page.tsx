@@ -7,17 +7,29 @@ import { formatLongDate } from "~/app/_lib/format";
 import { api } from "~/trpc/server";
 
 type SearchPageProps = {
-  searchParams: Promise<{ from?: string; to?: string; date?: string }>;
+  searchParams: Promise<{
+    from?: string;
+    to?: string;
+    date?: string;
+    passengers?: string;
+  }>;
 };
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const { from, to, date } = await searchParams;
+  const { from, to, date, passengers: passengersParam } = await searchParams;
 
   if (!from || !to || !date) redirect("/");
 
+  const passengers = passengersParam ? Number(passengersParam) : 1;
+
   const [cities, trips] = await Promise.all([
     api.city.list(),
-    api.schedule.search({ fromCityId: from, toCityId: to, date }),
+    api.schedule.search({
+      originCityId: from,
+      destCityId: to,
+      date,
+      passengers,
+    }),
   ]);
 
   const fromName = cities.find((c) => c.id === from)?.name ?? "Unknown";
@@ -51,7 +63,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           {trips.length > 0 ? (
             <>
               <p className="mb-6 text-neutral-600">
-                {trips.length} {trips.length === 1 ? "trip" : "trips"} found
+                {trips.length} {trips.length === 1 ? "trip" : "trips"} for{" "}
+                {passengers} {passengers === 1 ? "passenger" : "passengers"}
               </p>
               <div className="space-y-4">
                 {trips.map((trip) => (
