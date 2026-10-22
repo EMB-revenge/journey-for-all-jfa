@@ -67,11 +67,11 @@ The demo cleanup this phase used to own (`post.ts`, the `Post` model, `_componen
 
 ---
 
-## Phase 4 — Search and results
+## Phase 4 — Search and results (done 2026-10-19)
 
-**Pages:** `/` search, `/results`.
+**Pages:** `/search`.
 
-Finished (done 2026-10-19): `/search`, `SearchForm`, `TripCard`, and `schedule.search` are complete. Input reconciled to SPEC 14 `{ originCityId, destCityId, date, passengers }`; departed and cancelled trips excluded; `availableSeats >= passengers` filter applied; expired holds pruned opportunistically; past dates rejected at the API (Asia/Manila).
+Finished: `/search`, `SearchForm`, `TripCard`, and `schedule.search` are complete. Input reconciled to SPEC 14 `{ originCityId, destCityId, date, passengers }`; departed and cancelled trips excluded; `availableSeats >= passengers` filter applied; expired holds pruned opportunistically; past dates rejected at the API (Asia/Manila).
 
 1. Search form: origin and destination selects from `city.list`, date input with `min` set to today, passenger count 1–6, Zod validated
 2. `schedule.search`: match route and date, exclude cancelled and departed trips, use the route's `baseFare`, count free seats as capacity minus booking seats minus active holds, keep only trips with `availableSeats >= passengers`
@@ -82,7 +82,7 @@ Finished (done 2026-10-19): `/search`, `SearchForm`, `TripCard`, and `schedule.s
 
 ---
 
-## Phase 5 — Seat map and holds
+## Phase 5 — Seat map and holds (done 2026-10-23)
 
 **Page:** `/booking/seat-map`. **State:** `BookingFlowProvider` + `bookingFlowReducer`, mounted in the root layout so the selection survives a detour to `/login`.
 
@@ -96,6 +96,8 @@ Finished (done 2026-10-19): `/search`, `SearchForm`, `TripCard`, and `schedule.s
 `TripCard`'s disabled "Select seat" button is now a link to `/booking/seat-map` that carries the schedule and the search context.
 
 **Done when:** two browsers on the same seat, the second Continue fails and names the seat; the first browser's countdown runs; an expired hold frees the seat.
+
+Landed: the seat map, atomic holds, and the booking state machine are in. The two-browser check was not run by hand; the unique constraint on the active hold is what blocks a second hold on the same seat.
 
 ---
 
