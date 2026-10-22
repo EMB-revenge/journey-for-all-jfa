@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { useAuth } from "~/context/auth-provider";
+import { useAuth } from "~/context/AuthContext";
 import { authClient } from "~/server/better-auth/client";
 
 export function Navbar() {
