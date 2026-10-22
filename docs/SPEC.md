@@ -14,7 +14,7 @@ This document is the source of truth for the MVP. It replaces `initial-plan.md` 
 
 ## 1. Purpose
 
-A web app for booking one-way intercity bus trips: search, pick seats, enter passenger details, get a digital ticket. Admins manage cities, buses, routes, schedules, and view bookings.
+A web app for booking one-way intercity(In Panay Island for now) bus trips: search, pick seats, enter passenger details, get a digital ticket. Admins manage cities, buses, routes, schedules, and view bookings.
 
 ---
 
