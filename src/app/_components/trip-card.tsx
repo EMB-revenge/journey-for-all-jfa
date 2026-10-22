@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { formatDuration, formatTime } from "~/app/_lib/format";
 
 export type TripResult = {
@@ -61,12 +59,14 @@ export function TripCard({ trip }: { trip: TripResult }) {
             Unavailable
           </span>
         ) : (
-          <Link
-            href={`/trips/${trip.id}/seats`}
-            className="rounded-xl bg-yellow-400 px-6 py-3 text-sm font-semibold text-black transition hover:bg-yellow-300"
+          // Seat picking lands with Phase 5; until then the card is read-only.
+          <button
+            type="button"
+            disabled
+            className="cursor-not-allowed rounded-xl bg-yellow-400/50 px-6 py-3 text-sm font-semibold text-black"
           >
             Select seat
-          </Link>
+          </button>
         )}
       </div>
     </div>
