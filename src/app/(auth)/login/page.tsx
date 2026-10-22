@@ -11,7 +11,12 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ redirectTo?: string }>;
 }) {
-  const { redirectTo } = await searchParams;
+  const { redirectTo: raw } = await searchParams;
+
+  // Only same-site paths: a full URL here would bounce the user to it
+  // right after they sign in (open redirect).
+  const redirectTo =
+    raw?.startsWith("/") && !raw.startsWith("//") ? raw : undefined;
 
   if (await getSession()) redirect(redirectTo ?? "/");
 

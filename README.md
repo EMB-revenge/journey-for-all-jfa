@@ -74,14 +74,15 @@ Note: `npm run db:generate` runs `prisma migrate dev` despite the name. `npm run
 ```
 prisma/           schema, migrations, seed
 src/app/          routes: passenger pages, admin pages, two API handlers
-src/components/   shared UI, including the seat grid
-src/context/      AuthProvider, BookingFlowProvider
-src/reducers/     booking flow reducer
-src/lib/          Zod schemas and helpers
+src/app/_components/  shared UI (search form, trip cards, navbar, navbar auth)
+src/context/      AuthContext (client session)
+src/lib/          Zod schemas, date helpers, error payloads
 src/server/       Prisma client, Better Auth, tRPC context and routers
 src/middleware.ts admin route guard
 docs/             spec, PRD, brief, implementation plan
 ```
+
+Not built yet (Phases 5–7 of the implementation plan): the seat map, holds, booking confirm and ticket, `/my-bookings`, admin CRUD screens, `BookingFlowProvider`, and `src/reducers/`. Components and pages linked from earlier phases stay hidden until then.
 
 ## Docs
 
@@ -97,17 +98,7 @@ docs/             spec, PRD, brief, implementation plan
 ## Deployment
 
 1. Create a PostgreSQL database on Railway. Railway shows two URLs: `DATABASE_URL` on the internal network, and `DATABASE_PUBLIC_URL` through its proxy. Vercel runs outside Railway, so copy the public one
-2. Import the repo into Vercel, keep the root directory at the repo root, framework preset Next.js
-3. Set these variables before the first deploy. `src/env.js` validates them during `next build`, and a missing `BETTER_AUTH_SECRET` fails the build
-
-| Variable | Value |
-| --- | --- |
-| `DATABASE_URL` | the Railway public URL |
-| `BETTER_AUTH_SECRET` | generate a separate secret for production |
-| `BETTER_AUTH_URL` | optional, the deployed origin such as `https://your-app.vercel.app` |
-| `ADMIN_1_EMAIL`, `ADMIN_1_PASSWORD` and the other two sets | real admin accounts, needed only if the seed runs during deploy |
-
-4. Release step, run from a laptop with the production values in the shell:
+2. Run the release step from a laptop with the production values in the shell, against the still-empty database:
 
 ```powershell
 $env:DATABASE_URL="postgresql://postgres:<password>@<host>.proxy.rlwy.net:<port>/railway"
@@ -121,7 +112,16 @@ npm run db:migrate
 npm run db:seed
 ```
 
-Use real admin passwords here. Bus types and cities upsert on a re-run, but an admin that already exists keeps its password, so whichever password reaches production first is permanent. To change it later, sign in as that admin and use `/change-password`. To pick up a new password from `.env` locally, run `npx prisma migrate reset`, which drops the local database and re-seeds it.
+   Use real admin passwords here. Bus types and cities upsert on a re-run, but an admin that already exists keeps its password, so whichever password reaches production first is permanent. To change it later, sign in as that admin and use `/change-password`. To pick up a new password from `.env` locally, run `npx prisma migrate reset`, which drops the local database and re-seeds it.
+
+3. Import the repo into Vercel only after the seed, and keep the app unreachable until then: any passenger who registers with an admin's email before the seed runs would be promoted to admin by the `seedAdmins` step. Set these variables before the first deploy. `src/env.js` validates them during `next build`, and a missing `BETTER_AUTH_SECRET` fails the build
+
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | the Railway public URL |
+| `BETTER_AUTH_SECRET` | generate a separate secret for production |
+| `BETTER_AUTH_URL` | optional, the deployed origin such as `https://your-app.vercel.app` |
+| `ADMIN_1_EMAIL`, `ADMIN_1_PASSWORD` and the other two sets | real admin accounts, read by the seed step |
 
 Shell variables take precedence over `.env`, so your local `.env` stays untouched. Never run `npm run db:generate` against production: it runs `prisma migrate dev`, which can decide the database has drifted and offer to reset it, dropping data. `npm run db:migrate` runs `prisma migrate deploy` and only applies pending migrations.
 
