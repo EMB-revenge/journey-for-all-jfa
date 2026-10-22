@@ -13,7 +13,7 @@ export function Navbar() {
 
   const links = [
     { label: "Book a trip", href: "/" },
-    // "My bookings" and "Admin" come back when their pages land (Phases 6-7).
+    // "My bookings" and "Admin" come back when those pages land.
   ];
 
   async function handleSignOut() {

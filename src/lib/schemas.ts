@@ -59,6 +59,27 @@ export const searchTripsSchema = z.object({
     .max(6, "At most 6 passengers"),
 });
 
+export const scheduleSeatsSchema = z.object({
+  scheduleId: z.string().min(1),
+});
+
+/** 1-6 unique seats, the same ceiling as `passengers` in a search. */
+const seatIdList = z
+  .array(z.string().min(1))
+  .min(1, "Select at least one seat")
+  .max(6, "At most 6 seats")
+  .refine((ids) => new Set(ids).size === ids.length, "Seat IDs must be unique");
+
+export const createHoldSchema = z.object({
+  scheduleId: z.string().min(1),
+  seatIds: seatIdList,
+});
+
+export const releaseHoldsSchema = z.object({
+  scheduleId: z.string().min(1),
+  seatIds: seatIdList.optional(),
+});
+
 /** First message per field, for rendering under inputs. */
 export function fieldErrors(error: z.ZodError): Record<string, string> {
   const errors = error.flatten().fieldErrors;

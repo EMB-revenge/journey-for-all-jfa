@@ -13,6 +13,19 @@
 export type ConflictPayload =
   { takenSeats: string[] } | { reason: "HOLD_EXPIRED" };
 
+/**
+ * Prisma's unique-constraint violation. Matched by shape so callers need no
+ * import from `generated/prisma`.
+ */
+export function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2002"
+  );
+}
+
 export function isConflictPayload(value: unknown): value is ConflictPayload {
   if (typeof value !== "object" || value === null) return false;
 
