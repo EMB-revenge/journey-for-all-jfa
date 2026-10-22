@@ -44,13 +44,13 @@ Then create the schema, load the reference data, and run:
 
 ```powershell
 npm run db:generate        # prisma migrate dev, creates the database, then its migrations
-npm run db:seed            # bus types, cities, three admins
+npm run db:seed            # bus types, cities, demo buses/routes/trips, three admins
 npm run dev
 ```
 
 `db:generate` creates the `bus_ticketing` database when it is missing, so there is no separate `CREATE DATABASE` step. `.env` is gitignored, which is why it does not come down with `git clone`. Local data differs from machine to machine; `prisma/migrations/` is what keeps every schema identical.
 
-App runs at http://localhost:3000. Seeded admins can sign in at `/login`.
+App runs at http://localhost:3000. Seeded admins can sign in at `/login`. The seed also creates four demo buses, ten Panay routes, and two trips per route for the next three days, so a search has results on a fresh database.
 
 Note: `npm run db:generate` runs `prisma migrate dev` despite the name. `npm run db:migrate` runs `prisma migrate deploy`, which is what production uses.
 
@@ -63,7 +63,7 @@ Note: `npm run db:generate` runs `prisma migrate dev` despite the name. `npm run
 | `npm run start` | Serve the production build |
 | `npm run db:generate` | Create and apply a migration (development) |
 | `npm run db:migrate` | Apply migrations (production) |
-| `npm run db:seed` | Seed bus types, cities, admins |
+| `npm run db:seed` | Seed bus types, cities, demo buses and trips, admins |
 | `npm run db:studio` | Prisma Studio |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
@@ -75,14 +75,15 @@ Note: `npm run db:generate` runs `prisma migrate dev` despite the name. `npm run
 prisma/           schema, migrations, seed
 src/app/          routes: passenger pages, admin pages, two API handlers
 src/app/_components/  shared UI (search form, trip cards, navbar, navbar auth)
-src/context/      AuthContext (client session)
+src/context/      client providers (session, booking flow)
+src/reducers/     booking-flow reducer
 src/lib/          Zod schemas, date helpers, error payloads
 src/server/       Prisma client, Better Auth, tRPC context and routers
 src/middleware.ts admin route guard
-docs/             spec, PRD, brief, implementation plan, phase-specific agent plans
+docs/             spec, PRD, brief, implementation plan
 ```
 
-Not built yet (Phases 5–7 of the implementation plan): the seat map, holds, booking confirm and ticket, `/my-bookings`, admin CRUD screens, `BookingFlowProvider`, and `src/reducers/`. Components and pages linked from earlier phases stay hidden until then.
+Not built yet: booking confirm and ticket, `/my-bookings`, admin CRUD screens. Components and pages for those stay hidden until then.
 
 ## Docs
 
@@ -92,7 +93,6 @@ Not built yet (Phases 5–7 of the implementation plan): the seat map, holds, bo
 | [docs/PRD.md](docs/PRD.md) | Product scope, requirements, success metrics |
 | [docs/TEAM-BRIEF.md](docs/TEAM-BRIEF.md) | One-page shared picture and working agreements |
 | [docs/IMPLEMENTATION-PLAN.md](docs/IMPLEMENTATION-PLAN.md) | Build phases in order |
-| [docs/PHASE-5-AGENT-PLAN.md](docs/PHASE-5-AGENT-PLAN.md) | Agent-ready Phase 5 implementation tasks, safeguards, and acceptance checks |
 | [docs/passenger_flow.mermaid](docs/passenger_flow.mermaid) | Booking flow diagram |
 | [docs/ticket_sample.txt](docs/ticket_sample.txt) | Digital ticket layout reference |
 

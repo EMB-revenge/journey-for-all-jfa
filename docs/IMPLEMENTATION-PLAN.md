@@ -84,8 +84,6 @@ Finished (done 2026-10-19): `/search`, `SearchForm`, `TripCard`, and `schedule.s
 
 ## Phase 5 — Seat map and holds
 
-**Detailed agent handoff:** [docs/PHASE-5-AGENT-PLAN.md](PHASE-5-AGENT-PLAN.md) — task sequence, data-integrity requirements, UI/state behavior, testing, and acceptance checklist. Use this alongside `docs/SPEC.md`; the spec takes precedence if anything conflicts.
-
 **Page:** `/booking/seat-map`. **State:** `BookingFlowProvider` + `bookingFlowReducer`, mounted in the root layout so the selection survives a detour to `/login`.
 
 1. `schedule.seats`: derive two-state `AVAILABLE` / `OCCUPIED` (booked or actively held both read as occupied), opportunistic expired-hold delete
@@ -95,7 +93,7 @@ Finished (done 2026-10-19): `/search`, `SearchForm`, `TripCard`, and `schedule.s
 5. Countdown timer from `expiresAt`, visible on the passenger and summary pages; on zero, release and return to the seat map
 6. `CONFLICT` with `takenSeats`: refetch the map, drop the taken seats from the selection, show which ones went
 
-`TripCard` currently shows a disabled "Select seat" button; the `/trips/${trip.id}/seats` link existed before this phase and was removed to avoid a 404. Restore it as a link to `/booking/seat-map` when this phase lands.
+`TripCard`'s disabled "Select seat" button is now a link to `/booking/seat-map` that carries the schedule and the search context.
 
 **Done when:** two browsers on the same seat, the second Continue fails and names the seat; the first browser's countdown runs; an expired hold frees the seat.
 
@@ -137,7 +135,7 @@ The navbar's "Admin" link was removed until `/admin` exists; restore it when thi
 ## Phase 8 — Polish and deploy
 
 1. Empty states, Zod messages, and the conflict paths from spec §17
-2. Seed one demo schedule dated tomorrow so the demo is never empty
+2. Demo trips already come from `prisma/seed.ts` (three days from tomorrow); keep the seed in the release step so the demo is never empty
 3. Railway PostgreSQL, then Vercel pointed at the repo root with `DATABASE_URL`, `BETTER_AUTH_SECRET`, and the six admin seed vars
 4. Release step runs `npm run db:migrate`, then `npm run db:seed`
 5. Run the manual pass from spec §18 against the live URL
