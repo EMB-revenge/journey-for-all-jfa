@@ -20,7 +20,7 @@
     "preview": "next build && next start",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "tsx src/lib/dates.test.ts"
+    "test": "tsx src/lib/dates.test.ts && tsx src/lib/schemas.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.6.0",
