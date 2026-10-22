@@ -82,7 +82,7 @@ Finished: `/search`, `SearchForm`, `TripCard`, and `schedule.search` are complet
 
 ---
 
-## Phase 5 — Seat map and holds (done 2026-10-23)
+## Phase 5 — Seat map and holds (done 2026-10-23) (done 2026-10-23)
 
 **Page:** `/booking/seat-map`. **State:** `BookingFlowProvider` + `bookingFlowReducer`, mounted in the root layout so the selection survives a detour to `/login`.
 
