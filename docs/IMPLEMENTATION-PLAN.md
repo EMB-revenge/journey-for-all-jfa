@@ -93,7 +93,7 @@ Finished (done 2026-10-19): `/search`, `SearchForm`, `TripCard`, and `schedule.s
 5. Countdown timer from `expiresAt`, visible on the passenger and summary pages; on zero, release and return to the seat map
 6. `CONFLICT` with `takenSeats`: refetch the map, drop the taken seats from the selection, show which ones went
 
-`TripCard` links to `/trips/${trip.id}/seats` today. Point it at `/booking/seat-map` when this phase lands.
+`TripCard` currently shows a disabled "Select seat" button; the `/trips/${trip.id}/seats` link existed before this phase and was removed to avoid a 404. Restore it as a link to `/booking/seat-map` when this phase lands.
 
 **Done when:** two browsers on the same seat, the second Continue fails and names the seat; the first browser's countdown runs; an expired hold frees the seat.
 
@@ -110,6 +110,8 @@ Finished (done 2026-10-19): `/search`, `SearchForm`, `TripCard`, and `schedule.s
 5. `booking.list` and `booking.get`, own records only
 6. Delete the demo home page content and point `/` at search
 
+The navbar's "My bookings" links (dropdown and top nav) were removed until this phase; restore them when `/my-bookings` exists.
+
 **Done when:** a 2-seat booking creates one booking plus two booking seats, the ticket shows the snapshot fare, an admin fare change leaves it alone, and My Bookings lists it.
 
 ---
@@ -123,6 +125,8 @@ Finished (done 2026-10-19): `/search`, `SearchForm`, `TripCard`, and `schedule.s
 3. `admin.schedule.*`: create, edit, cancel with `isCancelled`, no fare field, no hard delete once bookings exist
 4. Buses, routes, and cities deactivate with `isActive = false` instead of disappearing
 5. `admin.booking.list`: read-only, filter by date and route, no edit, no delete
+
+The navbar's "Admin" link was removed until `/admin` exists; restore it when this phase lands.
 
 **Done when:** an admin adds a city, bus, route, and schedule, and a passenger can search and book that trip.
 
