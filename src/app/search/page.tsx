@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { Navbar } from "~/app/_components/navbar";
 import { TripCard } from "~/app/_components/trip-card";
 import { formatLongDate } from "~/app/_lib/format";
+import { seatMapHref } from "~/lib/seat-map";
 import { api } from "~/trpc/server";
 
 type SearchPageProps = {
@@ -68,7 +69,17 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               </p>
               <div className="space-y-4">
                 {trips.map((trip) => (
-                  <TripCard key={trip.id} trip={trip} />
+                  <TripCard
+                    key={trip.id}
+                    trip={trip}
+                    seatMapHref={seatMapHref({
+                      scheduleId: trip.id,
+                      passengers,
+                      from,
+                      to,
+                      date,
+                    })}
+                  />
                 ))}
               </div>
             </>
