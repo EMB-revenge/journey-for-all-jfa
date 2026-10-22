@@ -180,7 +180,6 @@ model Route {
   schedules  Schedule[]
 
   @@unique([originCityId, destCityId])
-  @@index([originCityId, destCityId])
   @@map("routes")
 }
 
