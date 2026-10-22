@@ -79,7 +79,7 @@ src/context/      AuthContext (client session)
 src/lib/          Zod schemas, date helpers, error payloads
 src/server/       Prisma client, Better Auth, tRPC context and routers
 src/middleware.ts admin route guard
-docs/             spec, PRD, brief, implementation plan
+docs/             spec, PRD, brief, implementation plan, phase-specific agent plans
 ```
 
 Not built yet (Phases 5–7 of the implementation plan): the seat map, holds, booking confirm and ticket, `/my-bookings`, admin CRUD screens, `BookingFlowProvider`, and `src/reducers/`. Components and pages linked from earlier phases stay hidden until then.
@@ -92,6 +92,7 @@ Not built yet (Phases 5–7 of the implementation plan): the seat map, holds, bo
 | [docs/PRD.md](docs/PRD.md) | Product scope, requirements, success metrics |
 | [docs/TEAM-BRIEF.md](docs/TEAM-BRIEF.md) | One-page shared picture and working agreements |
 | [docs/IMPLEMENTATION-PLAN.md](docs/IMPLEMENTATION-PLAN.md) | Build phases in order |
+| [docs/PHASE-5-AGENT-PLAN.md](docs/PHASE-5-AGENT-PLAN.md) | Agent-ready Phase 5 implementation tasks, safeguards, and acceptance checks |
 | [docs/passenger_flow.mermaid](docs/passenger_flow.mermaid) | Booking flow diagram |
 | [docs/ticket_sample.txt](docs/ticket_sample.txt) | Digital ticket layout reference |
 
