@@ -84,6 +84,8 @@ Finished (done 2026-10-19): `/search`, `SearchForm`, `TripCard`, and `schedule.s
 
 ## Phase 5 — Seat map and holds
 
+**Detailed agent handoff:** [docs/PHASE-5-AGENT-PLAN.md](PHASE-5-AGENT-PLAN.md) — task sequence, data-integrity requirements, UI/state behavior, testing, and acceptance checklist. Use this alongside `docs/SPEC.md`; the spec takes precedence if anything conflicts.
+
 **Page:** `/booking/seat-map`. **State:** `BookingFlowProvider` + `bookingFlowReducer`, mounted in the root layout so the selection survives a detour to `/login`.
 
 1. `schedule.seats`: derive two-state `AVAILABLE` / `OCCUPIED` (booked or actively held both read as occupied), opportunistic expired-hold delete
