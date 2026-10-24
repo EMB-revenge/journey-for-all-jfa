@@ -1,10 +1,10 @@
-export function formatTime(date: Date){ 
-    return date.toLocaleDateString("en-PH", { 
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-        timeZone: "UTC",
-    });
+export function formatTime(date: Date) {
+  return date.toLocaleTimeString("en-PH", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  });
 }
 
 export function  formatDuration(totalMinutes : number){
