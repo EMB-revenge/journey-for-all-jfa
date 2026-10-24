@@ -45,13 +45,12 @@ export default function HomePage() {
               Pick a city. Pick a seat. Go.
             </h1>
             <p className="mt-8 max-w-xl text-xl text-white/80">
-              Search trips between cities, reserve your exact seat, and get
-              your digital ticket right away.
+              Search trips between cities, reserve your exact seat, and get your
+              digital ticket right away.
             </p>
           </div>
         </section>
 
-        
         <div className="relative z-10 mx-auto -mt-28 max-w-7xl px-6">
           <SearchForm />
         </div>

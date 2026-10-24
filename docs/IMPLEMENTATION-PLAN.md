@@ -67,11 +67,11 @@ The demo cleanup this phase used to own (`post.ts`, the `Post` model, `_componen
 
 ---
 
-## Phase 4 — Search and results
+## Phase 4 — Search and results (done 2026-10-19)
 
-**Pages:** `/` search, `/results`.
+**Pages:** `/search`.
 
-Finished (done 2026-10-19): `/search`, `SearchForm`, `TripCard`, and `schedule.search` are complete. Input reconciled to SPEC 14 `{ originCityId, destCityId, date, passengers }`; departed and cancelled trips excluded; `availableSeats >= passengers` filter applied; expired holds pruned opportunistically; past dates rejected at the API (Asia/Manila).
+Finished: `/search`, `SearchForm`, `TripCard`, and `schedule.search` are complete. Input reconciled to SPEC 14 `{ originCityId, destCityId, date, passengers }`; departed and cancelled trips excluded; `availableSeats >= passengers` filter applied; expired holds pruned opportunistically; past dates rejected at the API (Asia/Manila).
 
 1. Search form: origin and destination selects from `city.list`, date input with `min` set to today, passenger count 1–6, Zod validated
 2. `schedule.search`: match route and date, exclude cancelled and departed trips, use the route's `baseFare`, count free seats as capacity minus booking seats minus active holds, keep only trips with `availableSeats >= passengers`
@@ -82,7 +82,7 @@ Finished (done 2026-10-19): `/search`, `SearchForm`, `TripCard`, and `schedule.s
 
 ---
 
-## Phase 5 — Seat map and holds
+## Phase 5 — Seat map and holds (done 2026-10-23) (done 2026-10-23)
 
 **Page:** `/booking/seat-map`. **State:** `BookingFlowProvider` + `bookingFlowReducer`, mounted in the root layout so the selection survives a detour to `/login`.
 
@@ -93,9 +93,11 @@ Finished (done 2026-10-19): `/search`, `SearchForm`, `TripCard`, and `schedule.s
 5. Countdown timer from `expiresAt`, visible on the passenger and summary pages; on zero, release and return to the seat map
 6. `CONFLICT` with `takenSeats`: refetch the map, drop the taken seats from the selection, show which ones went
 
-`TripCard` links to `/trips/${trip.id}/seats` today. Point it at `/booking/seat-map` when this phase lands.
+`TripCard`'s disabled "Select seat" button is now a link to `/booking/seat-map` that carries the schedule and the search context.
 
 **Done when:** two browsers on the same seat, the second Continue fails and names the seat; the first browser's countdown runs; an expired hold frees the seat.
+
+Landed: the seat map, atomic holds, and the booking state machine are in. The two-browser check was not run by hand; the unique constraint on the active hold is what blocks a second hold on the same seat.
 
 ---
 
@@ -109,6 +111,8 @@ Finished (done 2026-10-19): `/search`, `SearchForm`, `TripCard`, and `schedule.s
 4. Ticket page follows `docs/ticket_sample.txt`: reference, status, passenger, contact, route, date and times, bus, seat, fare, booked-on timestamp
 5. `booking.list` and `booking.get`, own records only
 6. Delete the demo home page content and point `/` at search
+
+The navbar's "My bookings" links (dropdown and top nav) were removed until this phase; restore them when `/my-bookings` exists.
 
 **Done when:** a 2-seat booking creates one booking plus two booking seats, the ticket shows the snapshot fare, an admin fare change leaves it alone, and My Bookings lists it.
 
@@ -124,6 +128,8 @@ Finished (done 2026-10-19): `/search`, `SearchForm`, `TripCard`, and `schedule.s
 4. Buses, routes, and cities deactivate with `isActive = false` instead of disappearing
 5. `admin.booking.list`: read-only, filter by date and route, no edit, no delete
 
+The navbar's "Admin" link was removed until `/admin` exists; restore it when this phase lands.
+
 **Done when:** an admin adds a city, bus, route, and schedule, and a passenger can search and book that trip.
 
 ---
@@ -131,7 +137,7 @@ Finished (done 2026-10-19): `/search`, `SearchForm`, `TripCard`, and `schedule.s
 ## Phase 8 — Polish and deploy
 
 1. Empty states, Zod messages, and the conflict paths from spec §17
-2. Seed one demo schedule dated tomorrow so the demo is never empty
+2. Demo trips already come from `prisma/seed.ts` (three days from tomorrow); keep the seed in the release step so the demo is never empty
 3. Railway PostgreSQL, then Vercel pointed at the repo root with `DATABASE_URL`, `BETTER_AUTH_SECRET`, and the six admin seed vars
 4. Release step runs `npm run db:migrate`, then `npm run db:seed`
 5. Run the manual pass from spec §18 against the live URL

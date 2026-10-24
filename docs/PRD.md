@@ -10,7 +10,7 @@ This document covers what the product is and why. Tables, procedures, and stack 
 
 ## 1. Overview
 
-A web app for booking one-way intercity bus trips. A passenger searches by route and date, picks a trip, selects seats (1–6), enters passenger details per seat, and receives a digital ticket. Administrators manage the bus fleet, routes, schedules, and cities, and can view all bookings.
+A web app for booking one-way intercity(In Panay Island for now) bus trips. A passenger searches by route and date, picks a trip, selects seats (1–6), enters passenger details per seat, and receives a digital ticket. Administrators manage the bus fleet, routes, schedules, and cities, and can view all bookings.
 
 The system demonstrates a working booking and ticketing product: authentication, relational data, transactional seat allocation with temporary holds, and admin CRUD.
 

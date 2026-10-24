@@ -19,7 +19,13 @@ function busTypeLabel(value: string): string {
   return value;
 }
 
-export function TripCard({ trip }: { trip: TripResult }) {
+export function TripCard({
+  trip,
+  seatMapHref,
+}: {
+  trip: TripResult;
+  seatMapHref: string;
+}) {
   const soldOut = trip.availableSeats === 0;
 
   return (
@@ -62,7 +68,7 @@ export function TripCard({ trip }: { trip: TripResult }) {
           </span>
         ) : (
           <Link
-            href={`/trips/${trip.id}/seats`}
+            href={seatMapHref}
             className="rounded-xl bg-yellow-400 px-6 py-3 text-sm font-semibold text-black transition hover:bg-yellow-300"
           >
             Select seat

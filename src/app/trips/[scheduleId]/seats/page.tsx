@@ -16,9 +16,30 @@ export default async function SeatsPage({ params }: SeatsPageProps) {
 
   let trip;
   try {
-    trip = await api.schedule.seatMap({ scheduleId });
+    trip = await api.schedule.seats({ scheduleId });
   } catch (error) {
     if (error instanceof TRPCError && error.code === "NOT_FOUND") notFound();
+    if (error instanceof TRPCError && error.code === "PRECONDITION_FAILED") {
+      return (
+        <>
+          <Navbar />
+          <main className="mx-auto max-w-7xl px-6 py-24 text-center">
+            <h1 className="text-2xl font-bold text-neutral-900">
+              This trip is no longer available
+            </h1>
+            <p className="mt-2 text-neutral-600">
+              It has already departed or was cancelled.
+            </p>
+            <Link
+              href="/"
+              className="mt-6 inline-block rounded-xl bg-yellow-400 px-6 py-3 text-sm font-semibold text-black transition hover:bg-yellow-300"
+            >
+              Search again
+            </Link>
+          </main>
+        </>
+      );
+    }
     throw error;
   }
 
@@ -33,10 +54,10 @@ export default async function SeatsPage({ params }: SeatsPageProps) {
                 Choose your seats
               </p>
               <h1 className="mt-2 text-3xl font-bold text-white">
-                {trip.fromName} → {trip.toName}
+                {trip.originCity} → {trip.destCity}
               </h1>
               <p className="mt-1 text-white/70">
-                {formatLongDate(trip.travelDate)} ·{" "}
+                {formatLongDate(trip.travelDate.toISOString().slice(0, 10))} ·{" "}
                 {formatTime(trip.departureTime)} –{" "}
                 {formatTime(trip.arrivalTime)} · {trip.busName} ({trip.busType})
               </p>
@@ -52,8 +73,12 @@ export default async function SeatsPage({ params }: SeatsPageProps) {
 
         <section className="mx-auto max-w-7xl px-6 py-12">
           <SeatPicker
-            scheduleId={trip.id}
-            seats={trip.seats}
+            scheduleId={trip.scheduleId}
+            seats={trip.seats.map((seat) => ({
+              id: seat.id,
+              seatNumber: seat.seatNumber,
+              available: seat.status === "AVAILABLE",
+            }))}
             fare={trip.fare}
           />
         </section>

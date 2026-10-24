@@ -1,6 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { isDeparted } from "~/lib/dates";
+import { scheduleSeatsSchema } from "~/lib/schemas";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 
 export const scheduleRouter = createTRPCRouter({
@@ -59,18 +61,17 @@ export const scheduleRouter = createTRPCRouter({
         .filter((trip) => trip.availableSeats >= input.passengers);
     }),
 
-  seatMap: publicProcedure
-    .input(z.object({ scheduleId: z.string().min(1) }))
+  /**
+   * Seat map data (SPEC 8.4). Booked and actively held seats both read as
+   * OCCUPIED, and nothing here says who holds what.
+   */
+  seats: publicProcedure
+    .input(scheduleSeatsSchema)
     .query(async ({ ctx, input }) => {
       const schedule = await ctx.db.schedule.findUnique({
         where: { id: input.scheduleId },
         include: {
-          bus: {
-            include: {
-              busType: true,
-              seats: { orderBy: { seatNumber: "asc" } },
-            },
-          },
+          bus: { include: { busType: true } },
           route: { include: { originCity: true, destCity: true } },
           bookingSeats: {
             where: {
@@ -80,37 +81,55 @@ export const scheduleRouter = createTRPCRouter({
           },
           holds: {
             where: { expiresAt: { gt: new Date() } },
-            select: { seatId: true, userId: true },
+            select: { seatId: true },
           },
         },
       });
 
-      if (!schedule || schedule.isCancelled) {
+      if (!schedule || !schedule.bus.isActive || !schedule.route.isActive) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
+      if (
+        schedule.isCancelled ||
+        isDeparted(schedule.travelDate, schedule.departureTime)
+      ) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED" });
+      }
 
-      const bookedIds = new Set(schedule.bookingSeats.map((b) => b.seatId));
-      // A seat held by someone else is unavailable. Your own hold is not.
-      const heldByOthers = new Set(
-        schedule.holds
-          .filter((h) => h.userId !== ctx.session?.user.id)
-          .map((h) => h.seatId),
-      );
+      
+      await ctx.db.seatHold.deleteMany({
+        where: { scheduleId: schedule.id, expiresAt: { lt: new Date() } },
+      });
+
+      const seats = await ctx.db.seat.findMany({
+        where: { busId: schedule.busId },
+        orderBy: { seatNumber: "asc" },
+        select: { id: true, seatNumber: true },
+      });
+
+      const occupied = new Set([
+        ...schedule.bookingSeats.map((row) => row.seatId),
+        ...schedule.holds.map((row) => row.seatId),
+      ]);
 
       return {
-        id: schedule.id,
-        travelDate: schedule.travelDate.toISOString().slice(0, 10),
+        scheduleId: schedule.id,
+        originCity: schedule.route.originCity.name,
+        destCity: schedule.route.destCity.name,
+        travelDate: schedule.travelDate,
         departureTime: schedule.departureTime,
         arrivalTime: schedule.arrivalTime,
+        durationMinutes: schedule.route.durationMinutes,
         busName: schedule.bus.name,
         busType: schedule.bus.busType.name,
-        fromName: schedule.route.originCity.name,
-        toName: schedule.route.destCity.name,
         fare: Number(schedule.route.baseFare),
-        seats: schedule.bus.seats.map((seat) => ({
+        capacity: schedule.bus.capacity,
+        seats: seats.map((seat) => ({
           id: seat.id,
           seatNumber: seat.seatNumber,
-          available: !bookedIds.has(seat.id) && !heldByOthers.has(seat.id),
+          status: occupied.has(seat.id)
+            ? ("OCCUPIED" as const)
+            : ("AVAILABLE" as const),
         })),
       };
     }),

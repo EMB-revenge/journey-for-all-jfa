@@ -51,7 +51,7 @@ Scaffolded with `create-t3-app` on 2026-09-30. No second service, no CORS setup,
 | Chunk | What it is |
 | --- | --- |
 | Schema | Ten domain tables plus the four auth tables, uniques, `BookingCounter`, first migration |
-| Seed | Bus types, cities, three admins created through the auth API |
+| Seed | Bus types, cities, three admins created through the auth API, plus demo buses, routes, and trips |
 | Auth | Sign-in and register pages, change password, admin route guard, role on the session |
 | tRPC foundation | Delete the demo router, add `adminProcedure`, shared Zod schemas in `src/lib` |
 | Search + results | City dropdowns, date and passenger inputs, schedule cards |
@@ -78,7 +78,7 @@ Leave columns and enum values unused rather than inventing a second system:
 
 ## Working agreements
 
-- Branch off `dev`, merge into `dev`, `main` only when a phase is done
+- Branch off `main` and merge back through a pull request; fast-forward `dev` to `main` so neither drifts
 - One person per chunk at a time, swap freely
 - Schema changes go through a migration, never `db push`, so all three databases match
 - Nobody edits `docs/SPEC.md` decisions without saying so in the group chat
