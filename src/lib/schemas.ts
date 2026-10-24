@@ -80,6 +80,32 @@ export const releaseHoldsSchema = z.object({
   seatIds: seatIdList.optional(),
 });
 
+export const passengerSchema = z.object({
+  seatId: z.string().min(1),
+  name: z.string().trim().min(2, "Name must be at least 2 characters"),
+  email: emailSchema,
+  phone: z
+    .string()
+    .trim()
+    .min(7, "Enter a valid phone number")
+    .max(20, "Enter a valid phone number")
+    .regex(/^[0-9+\-\s()]+$/, "Phone can only contain digits, +, -, and spaces"),
+});
+
+export const confirmBookingSchema = z.object({
+  scheduleId: z.string().min(1),
+  passengers: z
+    .array(passengerSchema)
+    .min(1, "At least 1 passenger")
+    .max(6, "At most 6 passengers")
+    .refine(
+      (list) => new Set(list.map((p) => p.seatId)).size === list.length,
+      "Each seat can only be used once",
+    ),
+});
+
+export const bookingIdSchema = z.object({ id: z.string().min(1) });
+
 /** First message per field, for rendering under inputs. */
 export function fieldErrors(error: z.ZodError): Record<string, string> {
   const errors = error.flatten().fieldErrors;
