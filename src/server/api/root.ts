@@ -1,10 +1,10 @@
 import { adminRouter } from "~/server/api/routers/admin";
+import { bookingRouter } from "~/server/api/routers/booking";
 import { busTypeRouter } from "~/server/api/routers/busType";
 import { cityRouter } from "~/server/api/routers/city";
 import { holdRouter } from "~/server/api/routers/hold";
 import { scheduleRouter } from "~/server/api/routers/schedule";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
-import { bookingRouter } from "~/server/api/routers/booking";
 
 /**
  * This is the primary router for your server.
@@ -13,6 +13,7 @@ import { bookingRouter } from "~/server/api/routers/booking";
  */
 export const appRouter = createTRPCRouter({
   admin: adminRouter,
+  booking: bookingRouter,
   busType: busTypeRouter,
   city: cityRouter,
   hold: holdRouter,

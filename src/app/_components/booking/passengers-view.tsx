@@ -119,7 +119,10 @@ export function PassengersView({ params }: { params: SeatMapParams }) {
   ) {
     setDrafts((prev) => ({
       ...prev,
-      [seatId]: { ...(prev[seatId] ?? getDraft(seatId, index)), [field]: value },
+      [seatId]: {
+        ...(prev[seatId] ?? getDraft(seatId, index)),
+        [field]: value,
+      },
     }));
   }
 

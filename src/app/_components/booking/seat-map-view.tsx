@@ -237,7 +237,10 @@ export function SeatMapView({ params }: { params: SeatMapParams }) {
         ) : (
           <div className="mt-6 grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8">
             {data.seats.map((seat) => {
-              const occupied = seat.status === "OCCUPIED";
+              // A returning passenger's own hold reads as OCCUPIED too.
+              const occupied =
+                seat.status === "OCCUPIED" &&
+                !selectedSeatIds.includes(seat.id);
               const selected = selectedSeatIds.includes(seat.id);
 
               return (

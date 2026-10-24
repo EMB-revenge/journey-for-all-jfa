@@ -68,10 +68,11 @@ export const holdRouter = createTRPCRouter({
           departureTime: true,
           isCancelled: true,
           bus: { select: { isActive: true } },
+          route: { select: { isActive: true } },
         },
       });
 
-      if (!schedule?.bus.isActive) {
+      if (!schedule?.bus.isActive || !schedule.route.isActive) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
       if (
