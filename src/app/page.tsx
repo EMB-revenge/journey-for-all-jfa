@@ -3,24 +3,6 @@ import Image from "next/image";
 import { Navbar } from "~/app/_components/navbar";
 import { SearchForm } from "~/app/_components/search-form";
 
-const steps = [
-  {
-    number: "01",
-    title: "Search",
-    text: "Choose your departure city, destination, and travel date.",
-  },
-  {
-    number: "02",
-    title: "Pick your seat",
-    text: "See which seats are open and select the one you want.",
-  },
-  {
-    number: "03",
-    title: "Get your ticket",
-    text: "Confirm your booking and receive your digital ticket instantly.",
-  },
-];
-
 export default function HomePage() {
   return (
     <>
@@ -54,27 +36,6 @@ export default function HomePage() {
         <div className="relative z-10 mx-auto -mt-28 max-w-7xl px-6">
           <SearchForm />
         </div>
-
-        {/* stepss*/}
-        <section className="mx-auto max-w-7xl px-6 py-24">
-          <h2 className="text-3xl font-bold text-neutral-900">How it works</h2>
-          <div className="mt-10 grid gap-8 md:grid-cols-3">
-            {steps.map((step) => (
-              <div
-                key={step.number}
-                className="rounded-2xl border border-neutral-200 p-8"
-              >
-                <span className="inline-block rounded-lg bg-yellow-400 px-3 py-1 text-sm font-bold text-black">
-                  {step.number}
-                </span>
-                <h3 className="mt-4 text-xl font-semibold text-neutral-900">
-                  {step.title}
-                </h3>
-                <p className="mt-2 text-neutral-600">{step.text}</p>
-              </div>
-            ))}
-          </div>
-        </section>
       </main>
     </>
   );

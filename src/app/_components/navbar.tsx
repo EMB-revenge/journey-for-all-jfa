@@ -13,7 +13,8 @@ export function Navbar() {
 
   const links = [
     { label: "Book a trip", href: "/" },
-    // "My bookings" and "Admin" come back when those pages land.
+    { label: "My bookings", href: "/my-bookings" },
+    // "Admin" comes back when that page lands.
   ];
 
   async function handleSignOut() {
@@ -71,6 +72,12 @@ export function Navbar() {
               </summary>
 
               <div className="absolute right-0 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
+                <Link
+                  href="/my-bookings"
+                  className="block px-4 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100"
+                >
+                  My bookings
+                </Link>
                 <Link
                   href="/change-password"
                   className="block px-4 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100"

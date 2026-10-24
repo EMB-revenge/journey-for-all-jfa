@@ -24,3 +24,16 @@ export function formatLongDate(isoDate: string) {
     timeZone: "UTC",
   });
 }
+
+/** Bookings are stamped in PH time, the same wall clock passengers read. */
+export function formatBookedAt(date: Date) {
+  return date.toLocaleString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Manila",
+  });
+}
