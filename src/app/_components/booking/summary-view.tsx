@@ -20,6 +20,7 @@ export function SummaryView({ params }: { params: SeatMapParams }) {
   const { state, dispatch } = useBookingFlow();
   const [mounted, setMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
 
   // The hold lives in client state only, so render it after hydration.
   useEffect(() => {
@@ -59,6 +60,7 @@ export function SummaryView({ params }: { params: SeatMapParams }) {
   const { mutate: confirmBooking, isPending } = api.booking.confirm.useMutation(
     {
       onSuccess: ({ id }) => {
+        setConfirmed(true);
         dispatch({ type: "reset" });
         router.push(`/booking/ticket/${id}`);
       },
@@ -100,6 +102,19 @@ export function SummaryView({ params }: { params: SeatMapParams }) {
 
   if (!mounted) {
     return <p className="py-16 text-center text-neutral-600">Loading...</p>;
+  }
+
+  // The booking is written but the ticket page is still loading: without this
+  // the cleared flow would flash "No active seat hold" at a confirmed booking.
+  if (confirmed) {
+    return (
+      <div className="rounded-2xl border border-neutral-200 bg-white px-6 py-12 text-center">
+        <p className="text-lg font-semibold text-neutral-900">
+          Booking confirmed
+        </p>
+        <p className="mt-2 text-neutral-600">Loading your ticket...</p>
+      </div>
+    );
   }
 
   if (!state.expiresAt || state.scheduleId !== params.scheduleId) {
