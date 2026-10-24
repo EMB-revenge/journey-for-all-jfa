@@ -93,9 +93,81 @@ export const bookingRouter = createTRPCRouter({
 
       let bookingId: string | undefined;
 
-      try {
-        const created = await ctx.db.$transaction(async (tx) => {
-          const booked = await tx.bookingSeat.findMany({
+      // A unique violation is either a seat race or two confirms creating the
+      // daily counter row at once. The seat check tells them apart; only the
+      // counter case retries, and by then the row exists so the upsert updates.
+      for (let attempt = 0; attempt < 2 && !bookingId; attempt++) {
+        try {
+          const created = await ctx.db.$transaction(async (tx) => {
+            const booked = await tx.bookingSeat.findMany({
+              where: {
+                scheduleId: schedule.id,
+                seatId: { in: seatIds },
+                booking: { status: { in: [...ACTIVE_STATUSES] } },
+              },
+              select: { seatId: true },
+            });
+            if (booked.length > 0) {
+              conflict({ takenSeats: booked.map((row) => row.seatId) });
+            }
+
+            // The passenger must still hold every seat (SPEC 12).
+            const holds = await tx.seatHold.count({
+              where: {
+                scheduleId: schedule.id,
+                userId,
+                seatId: { in: seatIds },
+                expiresAt: { gt: now },
+              },
+            });
+            if (holds !== seatIds.length) {
+              conflict({ reason: "HOLD_EXPIRED" });
+            }
+
+            // SPEC 10: one counter row per day, bumped inside the transaction.
+            const counter = await tx.bookingCounter.upsert({
+              where: { date: counterDate },
+              create: { date: counterDate, lastNumber: 1 },
+              update: { lastNumber: { increment: 1 } },
+            });
+            const reference = `BK-${day.replace(/-/g, "")}-${String(
+              counter.lastNumber,
+            ).padStart(6, "0")}`;
+
+            // SPEC 9: snapshot the fare so later route edits leave this alone.
+            const booking = await tx.booking.create({
+              data: {
+                userId,
+                scheduleId: schedule.id,
+                bookingReference: reference,
+                unitFare: schedule.route.baseFare,
+                totalAmount: schedule.route.baseFare.mul(seatIds.length),
+                seats: {
+                  create: input.passengers.map((p) => ({
+                    scheduleId: schedule.id,
+                    seatId: p.seatId,
+                    passengerName: p.name,
+                    passengerEmail: p.email,
+                    passengerPhone: p.phone,
+                  })),
+                },
+              },
+              select: { id: true },
+            });
+
+            await tx.seatHold.deleteMany({
+              where: { scheduleId: schedule.id, userId },
+            });
+
+            return booking;
+          });
+
+          bookingId = created.id;
+        } catch (error) {
+          if (!isUniqueViolation(error)) throw error;
+
+          // UNIQUE(schedule_id, seat_id) is the backstop (SPEC 8.6).
+          const taken = await ctx.db.bookingSeat.findMany({
             where: {
               scheduleId: schedule.id,
               seatId: { in: seatIds },
@@ -103,78 +175,10 @@ export const bookingRouter = createTRPCRouter({
             },
             select: { seatId: true },
           });
-          if (booked.length > 0) {
-            conflict({ takenSeats: booked.map((row) => row.seatId) });
+          if (taken.length > 0) {
+            conflict({ takenSeats: taken.map((row) => row.seatId) });
           }
-
-          // The passenger must still hold every seat (SPEC 12).
-          const holds = await tx.seatHold.count({
-            where: {
-              scheduleId: schedule.id,
-              userId,
-              seatId: { in: seatIds },
-              expiresAt: { gt: now },
-            },
-          });
-          if (holds !== seatIds.length) {
-            conflict({ reason: "HOLD_EXPIRED" });
-          }
-
-          // SPEC 10: one counter row per day, bumped inside the transaction.
-          const counter = await tx.bookingCounter.upsert({
-            where: { date: counterDate },
-            create: { date: counterDate, lastNumber: 1 },
-            update: { lastNumber: { increment: 1 } },
-          });
-          const reference = `BK-${day.replace(/-/g, "")}-${String(
-            counter.lastNumber,
-          ).padStart(6, "0")}`;
-
-          // SPEC 9: snapshot the fare so later route edits leave this alone.
-          const booking = await tx.booking.create({
-            data: {
-              userId,
-              scheduleId: schedule.id,
-              bookingReference: reference,
-              unitFare: schedule.route.baseFare,
-              totalAmount: schedule.route.baseFare.mul(seatIds.length),
-              seats: {
-                create: input.passengers.map((p) => ({
-                  scheduleId: schedule.id,
-                  seatId: p.seatId,
-                  passengerName: p.name,
-                  passengerEmail: p.email,
-                  passengerPhone: p.phone,
-                })),
-              },
-            },
-            select: { id: true },
-          });
-
-          await tx.seatHold.deleteMany({
-            where: { scheduleId: schedule.id, userId },
-          });
-
-          return booking;
-        });
-
-        bookingId = created.id;
-      } catch (error) {
-        if (!isUniqueViolation(error)) throw error;
-
-        // UNIQUE(schedule_id, seat_id) is the backstop (SPEC 8.6).
-        const taken = await ctx.db.bookingSeat.findMany({
-          where: {
-            scheduleId: schedule.id,
-            seatId: { in: seatIds },
-            booking: { status: { in: [...ACTIVE_STATUSES] } },
-          },
-          select: { seatId: true },
-        });
-        conflict({
-          takenSeats:
-            taken.length > 0 ? taken.map((row) => row.seatId) : seatIds,
-        });
+        }
       }
 
       if (!bookingId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
