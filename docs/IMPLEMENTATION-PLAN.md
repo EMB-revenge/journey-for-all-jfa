@@ -112,9 +112,9 @@ Landed: the seat map, atomic holds, and the booking state machine are in. The tw
 5. `booking.list` and `booking.get`, own records only
 6. Delete the demo home page content and point `/` at search
 
-The navbar's "My bookings" links (dropdown and top nav) were removed until this phase; restore them when `/my-bookings` exists.
-
 **Done when:** a 2-seat booking creates one booking plus two booking seats, the ticket shows the snapshot fare, an admin fare change leaves it alone, and My Bookings lists it.
+
+Landed: passenger details, summary, the confirm transaction, the ticket, and My Bookings are in. The navbar's "My bookings" links are back. A `P2002` from the daily `BookingCounter` upsert retries once instead of reading as a seat conflict; the seat unique constraint stays the backstop. The two-browser confirm race was not run by hand.
 
 ---
 
