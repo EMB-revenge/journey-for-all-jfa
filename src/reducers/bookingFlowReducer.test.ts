@@ -83,6 +83,33 @@ assert.deepEqual(held.selectedSeatIds, ["seat-1"]);
 const cleared = bookingFlowReducer(held, { type: "holdCleared" });
 assert.equal(cleared.expiresAt, null);
 assert.deepEqual(cleared.selectedSeatIds, []);
+assert.deepEqual(
+  cleared.passengerDetails,
+  [],
+  "a cleared hold drops the passenger details with the seats",
+);
+
+// Passenger details live between the form and the summary.
+const passengers = [
+  {
+    seatId: "seat-1",
+    name: "Juan Dela Cruz",
+    email: "juan@email.com",
+    phone: "09123456789",
+  },
+];
+const saved = bookingFlowReducer(cleared, {
+  type: "passengersSaved",
+  passengers,
+});
+assert.deepEqual(saved.passengerDetails, passengers);
+assert.deepEqual(saved.selectedSeatIds, [], "saving keeps the seat selection");
+
+const savedThenCleared = bookingFlowReducer(
+  bookingFlowReducer(held, { type: "passengersSaved", passengers }),
+  { type: "holdCleared" },
+);
+assert.deepEqual(savedThenCleared.passengerDetails, []);
 
 assert.equal(
   bookingFlowReducer(cleared, { type: "reset" }),
