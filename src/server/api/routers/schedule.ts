@@ -1,12 +1,20 @@
 import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 
 import { isDeparted } from "~/lib/dates";
-import { scheduleSeatsSchema, searchTripsSchema } from "~/lib/schemas";
+import { scheduleSeatsSchema } from "~/lib/schemas";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 
 export const scheduleRouter = createTRPCRouter({
   search: publicProcedure
-    .input(searchTripsSchema)
+    .input(
+      z.object({
+        originCityId: z.string().min(1),
+        destCityId: z.string().min(1),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        passengers: z.number().int().min(1).default(1),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       const schedules = await ctx.db.schedule.findMany({
         where: {
@@ -36,19 +44,7 @@ export const scheduleRouter = createTRPCRouter({
         },
       });
 
-      // SPEC 12 cleanup: the expiresAt filter above already excludes expired
-      // holds, so availability does not depend on this delete landing first.
-      if (schedules.length > 0) {
-        await ctx.db.seatHold.deleteMany({
-          where: {
-            scheduleId: { in: schedules.map((s) => s.id) },
-            expiresAt: { lt: new Date() },
-          },
-        });
-      }
-
       return schedules
-        .filter((s) => !isDeparted(s.travelDate, s.departureTime))
         .map((s) => ({
           id: s.id,
           busName: s.bus.name,
@@ -62,7 +58,7 @@ export const scheduleRouter = createTRPCRouter({
             s.bus.capacity - s.bookingSeats.length - s.holds.length,
           ),
         }))
-        .filter((t) => t.availableSeats >= input.passengers);
+        .filter((trip) => trip.availableSeats >= input.passengers);
     }),
 
   /**
@@ -100,8 +96,7 @@ export const scheduleRouter = createTRPCRouter({
         throw new TRPCError({ code: "PRECONDITION_FAILED" });
       }
 
-      // SPEC 12 cleanup. Availability above already ignores expired holds, so
-      // a failed delete cannot make the map wrong.
+      
       await ctx.db.seatHold.deleteMany({
         where: { scheduleId: schedule.id, expiresAt: { lt: new Date() } },
       });
