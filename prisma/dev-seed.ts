@@ -54,7 +54,9 @@ async function main() {
   for (let d = 0; d < 8; d++) {
     const day = new Date();
     day.setUTCDate(day.getUTCDate() + d);
-    const travelDate = new Date(`${day.toISOString().slice(0, 10)}T00:00:00.000Z`);
+    const travelDate = new Date(
+      `${day.toISOString().slice(0, 10)}T00:00:00.000Z`,
+    );
 
     for (const [dep, arr] of times) {
       const departureTime = new Date(`1970-01-01T${dep}:00.000Z`);

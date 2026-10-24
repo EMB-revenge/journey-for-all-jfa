@@ -89,7 +89,10 @@ export const passengerSchema = z.object({
     .trim()
     .min(7, "Enter a valid phone number")
     .max(20, "Enter a valid phone number")
-    .regex(/^[0-9+\-\s()]+$/, "Phone can only contain digits, +, -, and spaces"),
+    .regex(
+      /^[0-9+\-\s()]+$/,
+      "Phone can only contain digits, +, -, and spaces",
+    ),
 });
 
 export const confirmBookingSchema = z.object({
