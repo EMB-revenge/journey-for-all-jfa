@@ -1,20 +1,12 @@
 import { TRPCError } from "@trpc/server";
-import { z } from "zod";
 
 import { isDeparted } from "~/lib/dates";
-import { scheduleSeatsSchema } from "~/lib/schemas";
+import { scheduleSeatsSchema, searchTripsSchema } from "~/lib/schemas";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 
 export const scheduleRouter = createTRPCRouter({
   search: publicProcedure
-    .input(
-      z.object({
-        originCityId: z.string().min(1),
-        destCityId: z.string().min(1),
-        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-        passengers: z.number().int().min(1).default(1),
-      }),
-    )
+    .input(searchTripsSchema)
     .query(async ({ ctx, input }) => {
       const schedules = await ctx.db.schedule.findMany({
         where: {
@@ -45,6 +37,7 @@ export const scheduleRouter = createTRPCRouter({
       });
 
       return schedules
+        .filter((s) => !isDeparted(s.travelDate, s.departureTime))
         .map((s) => ({
           id: s.id,
           busName: s.bus.name,
@@ -96,7 +89,6 @@ export const scheduleRouter = createTRPCRouter({
         throw new TRPCError({ code: "PRECONDITION_FAILED" });
       }
 
-      
       await ctx.db.seatHold.deleteMany({
         where: { scheduleId: schedule.id, expiresAt: { lt: new Date() } },
       });
