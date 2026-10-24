@@ -2,23 +2,46 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { HoldCountdown } from "~/app/_components/booking/hold-countdown";
 import { formatDuration, formatLongDate, formatTime } from "~/app/_lib/format";
+import { useAuth } from "~/context/AuthContext";
 import { useBookingFlow } from "~/context/BookingFlowProvider";
+import { fieldErrors, passengerSchema } from "~/lib/schemas";
 import { searchHref, seatMapHref, type SeatMapParams } from "~/lib/seat-map";
+import type { PassengerDetail } from "~/reducers/bookingFlowReducer";
 import { api } from "~/trpc/react";
 
+type Draft = { name: string; email: string; phone: string };
+
+const emptyDraft: Draft = { name: "", email: "", phone: "" };
+
+const fieldClass =
+  "w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-base text-neutral-900 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40 focus:outline-none";
+
 /**
- * Hold recap after a successful hold: the passenger forms come with booking
- * confirm. Deliberately a recap, not a booking.
+ * Passenger details for the held seats: one name, email, and phone per seat
+ * (SPEC 20.8). Saves to the booking flow and continues to the summary.
  */
 export function PassengersView({ params }: { params: SeatMapParams }) {
   const router = useRouter();
   const utils = api.useUtils();
+  const { session } = useAuth();
   const { state, dispatch } = useBookingFlow();
   const [mounted, setMounted] = useState(false);
+
+  const [drafts, setDrafts] = useState<Record<string, Draft>>(() =>
+    Object.fromEntries(
+      state.passengerDetails.map((p) => [
+        p.seatId,
+        { name: p.name, email: p.email, phone: p.phone },
+      ]),
+    ),
+  );
+  const [errors, setErrors] = useState<Record<string, Record<string, string>>>(
+    {},
+  );
 
   // The hold lives in client state only, so render it after hydration.
   useEffect(() => {
@@ -35,6 +58,16 @@ export function PassengersView({ params }: { params: SeatMapParams }) {
     { enabled: hasHold },
   );
   const { mutate: releaseHolds } = api.hold.release.useMutation();
+
+  // Held seat ids in seat-number order, so forms read Seat 3, Seat 4, ...
+  const orderedSeats = useMemo(() => {
+    const numbers = new Map(
+      (data?.seats ?? []).map((seat) => [seat.id, seat.seatNumber]),
+    );
+    return state.selectedSeatIds
+      .map((id) => ({ id, seatNumber: numbers.get(id) }))
+      .sort((a, b) => (a.seatNumber ?? 0) - (b.seatNumber ?? 0));
+  }, [data, state.selectedSeatIds]);
 
   const changeSeats = useCallback(() => {
     releaseHolds(
@@ -63,6 +96,54 @@ export function PassengersView({ params }: { params: SeatMapParams }) {
       },
     );
   }, [dispatch, params, releaseHolds, router, utils]);
+
+  /** The first passenger starts from the signed-in account. */
+  function getDraft(seatId: string, index: number): Draft {
+    const saved = drafts[seatId];
+    if (saved) return saved;
+    if (index === 0) {
+      return {
+        name: session?.user.name ?? "",
+        email: session?.user.email ?? "",
+        phone: "",
+      };
+    }
+    return emptyDraft;
+  }
+
+  function updateDraft(
+    seatId: string,
+    index: number,
+    field: keyof Draft,
+    value: string,
+  ) {
+    setDrafts((prev) => ({
+      ...prev,
+      [seatId]: { ...(prev[seatId] ?? getDraft(seatId, index)), [field]: value },
+    }));
+  }
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+
+    const nextErrors: Record<string, Record<string, string>> = {};
+    const passengers: PassengerDetail[] = [];
+
+    orderedSeats.forEach((seat, index) => {
+      const parsed = passengerSchema.safeParse({
+        seatId: seat.id,
+        ...getDraft(seat.id, index),
+      });
+      if (parsed.success) passengers.push(parsed.data);
+      else nextErrors[seat.id] = fieldErrors(parsed.error);
+    });
+
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
+    dispatch({ type: "passengersSaved", passengers });
+    router.push(seatMapHref(params, "/booking/summary"));
+  }
 
   if (!mounted) {
     return <p className="py-16 text-center text-neutral-600">Loading...</p>;
@@ -96,22 +177,20 @@ export function PassengersView({ params }: { params: SeatMapParams }) {
     );
   }
 
-  const seatNumbers = state.selectedSeatIds
-    .map((id) => data?.seats.find((seat) => seat.id === id)?.seatNumber)
-    .filter((seatNumber) => seatNumber !== undefined)
-    .sort((a, b) => a - b);
+  const seatNumbers = orderedSeats
+    .map((seat) => seat.seatNumber)
+    .filter((seatNumber) => seatNumber !== undefined);
 
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold tracking-[0.25em] text-neutral-500 uppercase">
-            Seats held
+            Passenger details
           </p>
           <h1 className="mt-2 text-3xl font-bold text-neutral-900">
-            You have {state.selectedSeatIds.length}{" "}
-            {state.selectedSeatIds.length === 1 ? "seat" : "seats"} for five
-            minutes
+            Who is riding in{" "}
+            {state.selectedSeatIds.length === 1 ? "this seat" : "these seats"}?
           </h1>
         </div>
         <HoldCountdown expiresAt={state.expiresAt} onExpire={handleExpire} />
@@ -152,32 +231,112 @@ export function PassengersView({ params }: { params: SeatMapParams }) {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-neutral-200 bg-white p-6">
-        <p className="font-semibold text-neutral-900">
-          Passenger details come next
-        </p>
-        <p className="mt-2 text-neutral-600">
-          Seats are only held for now. Names and contact details per seat, the
-          booking summary, and your ticket come with booking confirmation. Keep
-          this tab open until then.
-        </p>
+      {data ? (
+        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+          {orderedSeats.map((seat, index) => {
+            const draft = getDraft(seat.id, index);
+            const seatErrors = errors[seat.id] ?? {};
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={changeSeats}
-            className="rounded-xl border border-neutral-300 px-6 py-3 text-sm font-semibold text-neutral-900 transition hover:border-yellow-400"
-          >
-            Change seats
-          </button>
-          <Link
-            href={searchHref(params)}
-            className="rounded-xl px-6 py-3 text-sm font-semibold text-neutral-700 underline decoration-neutral-300 underline-offset-4"
-          >
-            Back to results
-          </Link>
-        </div>
-      </div>
+            return (
+              <div
+                key={seat.id}
+                className="rounded-2xl border border-neutral-200 bg-white p-6"
+              >
+                <h2 className="text-lg font-semibold text-neutral-900">
+                  Passenger {index + 1} · Seat {seat.seatNumber}
+                </h2>
+
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <label className="block sm:col-span-2">
+                    <span className="mb-2 block text-sm text-neutral-600">
+                      Full name
+                    </span>
+                    <input
+                      value={draft.name}
+                      onChange={(e) =>
+                        updateDraft(seat.id, index, "name", e.target.value)
+                      }
+                      className={fieldClass}
+                      autoComplete="name"
+                    />
+                    {seatErrors.name && (
+                      <span className="mt-1 block text-sm text-red-600">
+                        {seatErrors.name}
+                      </span>
+                    )}
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-2 block text-sm text-neutral-600">
+                      Email
+                    </span>
+                    <input
+                      type="email"
+                      value={draft.email}
+                      onChange={(e) =>
+                        updateDraft(seat.id, index, "email", e.target.value)
+                      }
+                      className={fieldClass}
+                      autoComplete="email"
+                    />
+                    {seatErrors.email && (
+                      <span className="mt-1 block text-sm text-red-600">
+                        {seatErrors.email}
+                      </span>
+                    )}
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-2 block text-sm text-neutral-600">
+                      Phone number
+                    </span>
+                    <input
+                      type="tel"
+                      value={draft.phone}
+                      onChange={(e) =>
+                        updateDraft(seat.id, index, "phone", e.target.value)
+                      }
+                      className={fieldClass}
+                      autoComplete="tel"
+                    />
+                    {seatErrors.phone && (
+                      <span className="mt-1 block text-sm text-red-600">
+                        {seatErrors.phone}
+                      </span>
+                    )}
+                  </label>
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={changeSeats}
+                className="rounded-xl border border-neutral-300 px-6 py-3 text-sm font-semibold text-neutral-900 transition hover:border-yellow-400"
+              >
+                Change seats
+              </button>
+              <Link
+                href={searchHref(params)}
+                className="text-sm font-semibold text-neutral-700 underline decoration-neutral-300 underline-offset-4"
+              >
+                Back to results
+              </Link>
+            </div>
+            <button
+              type="submit"
+              className="rounded-xl bg-yellow-400 px-8 py-3 text-base font-semibold text-black transition hover:bg-yellow-300"
+            >
+              Review booking
+            </button>
+          </div>
+        </form>
+      ) : (
+        <p className="py-8 text-center text-neutral-600">Loading seats...</p>
+      )}
     </div>
   );
 }

@@ -1,13 +1,22 @@
 /**
  * Booking journey state (SPEC 16). It lives in the root layout so the seat
- * selection survives the detour to `/login`. No passenger data, no storage.
+ * selection survives the detour to `/login`. Passenger details are kept here
+ * between the passengers page and the summary. No storage.
  */
+
+export type PassengerDetail = {
+  seatId: string;
+  name: string;
+  email: string;
+  phone: string;
+};
 
 export type BookingFlowState = {
   scheduleId: string | null;
   passengers: number;
   selectedSeatIds: string[];
   expiresAt: Date | null;
+  passengerDetails: PassengerDetail[];
   /** Search context, for the "back to search" links. */
   from: string | null;
   to: string | null;
@@ -19,6 +28,7 @@ export const initialBookingFlowState: BookingFlowState = {
   passengers: 1,
   selectedSeatIds: [],
   expiresAt: null,
+  passengerDetails: [],
   from: null,
   to: null,
   date: null,
@@ -37,6 +47,7 @@ export type BookingFlowAction =
   | { type: "removeSeats"; seatIds: string[] }
   | { type: "holdStarted"; expiresAt: Date }
   | { type: "holdCleared" }
+  | { type: "passengersSaved"; passengers: PassengerDetail[] }
   | { type: "reset" };
 
 export function bookingFlowReducer(
@@ -98,7 +109,15 @@ export function bookingFlowReducer(
       return { ...state, expiresAt: action.expiresAt };
 
     case "holdCleared":
-      return { ...state, expiresAt: null, selectedSeatIds: [] };
+      return {
+        ...state,
+        expiresAt: null,
+        selectedSeatIds: [],
+        passengerDetails: [],
+      };
+
+    case "passengersSaved":
+      return { ...state, passengerDetails: action.passengers };
 
     case "reset":
       return initialBookingFlowState;
