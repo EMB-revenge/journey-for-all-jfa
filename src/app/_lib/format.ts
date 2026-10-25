@@ -37,3 +37,10 @@ export function formatBookedAt(date: Date) {
     timeZone: "Asia/Manila",
   });
 }
+
+// Seats are stored as 1..capacity. The bus has 4 seats per row (A B | C D)
+export function seatLabel(seatNumber: number) {
+  const row = Math.floor((seatNumber - 1) / 4) + 1;
+  const letter = "ABCD"[(seatNumber - 1) % 4] ?? "";
+  return `${row}${letter}`;
+}
