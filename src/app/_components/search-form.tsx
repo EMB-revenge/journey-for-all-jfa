@@ -44,16 +44,16 @@ export function SearchForm() {
   }
 
   const fieldClass =
-    "w-full rounded-xl border border-neutral-300 bg-white px-4 py-4 text-base text-neutral-900 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40 focus:outline-none";
+    "block w-full min-w-0 rounded-xl border border-neutral-300 bg-white px-4 py-3 text-base text-neutral-900 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40 focus:outline-none sm:py-4";
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-3xl border border-neutral-200 bg-white p-8 shadow-2xl"
+      className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-2xl sm:p-8"
       noValidate
     >
       <div className="grid gap-4 md:grid-cols-2 md:items-end lg:grid-cols-[1fr_1fr_0.7fr_0.5fr_auto]">
-        <label className="block">
+        <label className="block min-w-0">
           <span className="mb-2 block text-sm text-neutral-600">From</span>
           <select
             className={fieldClass}
@@ -77,7 +77,7 @@ export function SearchForm() {
           )}
         </label>
 
-        <label className="block">
+        <label className="block min-w-0">
           <span className="mb-2 block text-sm text-neutral-600">To</span>
           <select
             className={fieldClass}
@@ -101,7 +101,7 @@ export function SearchForm() {
           )}
         </label>
 
-        <label className="block">
+        <label className="block min-w-0">
           <span className="mb-2 block text-sm text-neutral-600">
             Travel date
           </span>
@@ -119,7 +119,7 @@ export function SearchForm() {
           )}
         </label>
 
-        <label className="block">
+        <label className="block min-w-0">
           <span className="mb-2 block text-sm text-neutral-600">
             Passengers
           </span>
@@ -143,7 +143,7 @@ export function SearchForm() {
 
         <button
           type="submit"
-          className="rounded-xl bg-yellow-400 px-8 py-4 text-base font-semibold text-black transition hover:bg-yellow-300"
+          className="rounded-xl bg-yellow-400 px-8 py-3 text-base font-semibold text-black transition hover:bg-yellow-300 sm:py-4 md:col-span-2 lg:col-span-1"
         >
           Search trips
         </button>
