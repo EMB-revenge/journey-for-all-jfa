@@ -4,11 +4,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { formatDuration, formatLongDate, formatTime } from "~/app/_lib/format";
+import {
+  formatDuration,
+  formatLongDate,
+  formatTime,
+  seatLabel,
+} from "~/app/_lib/format";
 import { useAuth } from "~/context/AuthContext";
 import { useBookingFlow } from "~/context/BookingFlowProvider";
 import { searchHref, seatMapHref, type SeatMapParams } from "~/lib/seat-map";
 import { api } from "~/trpc/react";
+
+const SEATS_PER_ROW = 4;
 
 function busTypeLabel(value: string) {
   if (value === "AIRCON") return "Aircon";
@@ -72,7 +79,7 @@ export function SeatMapView({ params }: { params: SeatMapParams }) {
 
         setConflict(
           numbers.length > 0
-            ? `Seat ${numbers.join(", ")} was taken while you were deciding. Pick another one.`
+            ? `Seat ${numbers.map(seatLabel).join(", ")} was taken while you were deciding. Pick another one.`
             : "Some of those seats were taken. Pick another one.",
         );
         dispatch({ type: "removeSeats", seatIds: payload.takenSeats });
@@ -154,6 +161,50 @@ export function SeatMapView({ params }: { params: SeatMapParams }) {
     !createHold.isPending &&
     !authPending;
 
+  // Seats are stored 1..capacity and drawn four to a row: A B | aisle | C D.
+  const bySeatNumber = new Map(data.seats.map((seat) => [seat.seatNumber, seat]));
+  const lastSeatNumber =
+    data.seats.length > 0
+      ? Math.max(...data.seats.map((seat) => seat.seatNumber))
+      : 0;
+  const rowCount = Math.ceil(lastSeatNumber / SEATS_PER_ROW);
+
+  function renderSeat(row: number, column: number) {
+    const seat = bySeatNumber.get(row * SEATS_PER_ROW + column + 1);
+    if (!seat) return <div key={`empty-${row}-${column}`} />;
+
+    // A returning passenger's own hold reads as OCCUPIED too.
+    const occupied =
+      seat.status === "OCCUPIED" && !selectedSeatIds.includes(seat.id);
+    const selected = selectedSeatIds.includes(seat.id);
+    const label = seatLabel(seat.seatNumber);
+
+    return (
+      <button
+        key={seat.id}
+        type="button"
+        disabled={occupied}
+        aria-pressed={selected}
+        aria-label={`Seat ${label}, ${
+          occupied ? "occupied" : selected ? "selected" : "available"
+        }`}
+        onClick={() => {
+          setConflict(null);
+          dispatch({ type: "toggleSeat", seatId: seat.id });
+        }}
+        className={`h-12 w-12 rounded-xl border text-sm font-semibold transition focus:ring-2 focus:ring-yellow-400/60 focus:outline-none ${
+          occupied
+            ? "cursor-not-allowed border-neutral-200 bg-neutral-200 text-neutral-400"
+            : selected
+              ? "border-yellow-400 bg-yellow-400 text-black"
+              : "border-neutral-300 bg-white text-neutral-900 hover:border-yellow-400"
+        }`}
+      >
+        {label}
+      </button>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -224,7 +275,7 @@ export function SeatMapView({ params }: { params: SeatMapParams }) {
               Selected
             </li>
             <li className="flex items-center gap-2">
-              <span className="h-4 w-4 rounded border border-neutral-200 bg-neutral-100" />
+              <span className="h-4 w-4 rounded border border-neutral-200 bg-neutral-200" />
               Occupied
             </li>
           </ul>
@@ -235,39 +286,43 @@ export function SeatMapView({ params }: { params: SeatMapParams }) {
             This bus has no seats configured yet.
           </p>
         ) : (
-          <div className="mt-6 grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8">
-            {data.seats.map((seat) => {
-              // A returning passenger's own hold reads as OCCUPIED too.
-              const occupied =
-                seat.status === "OCCUPIED" &&
-                !selectedSeatIds.includes(seat.id);
-              const selected = selectedSeatIds.includes(seat.id);
+          // bus outline
+          <div className="mt-6 mx-auto w-fit rounded-[2.5rem] border-2 border-neutral-300 bg-neutral-50 px-8 pt-6 pb-8">
+            {/* Front of the bus */}
+            <div className="mx-auto mb-4 h-2 w-3/4 rounded-full bg-neutral-300" />
+            <div className="mb-6 flex items-center justify-between border-b border-neutral-300 pb-4">
+              <span className="rounded-lg border border-neutral-300 bg-neutral-200 px-3 py-1 text-xs font-semibold text-neutral-500">
+                Driver
+              </span>
+              <span className="text-xs font-semibold tracking-[0.25em] text-neutral-500 uppercase">
+                Front
+              </span>
+              <span className="rounded-lg border border-neutral-300 px-3 py-1 text-xs font-semibold text-neutral-500">
+                Door
+              </span>
+            </div>
 
-              return (
-                <button
-                  key={seat.id}
-                  type="button"
-                  disabled={occupied}
-                  aria-pressed={selected}
-                  aria-label={`Seat ${seat.seatNumber}, ${
-                    occupied ? "occupied" : selected ? "selected" : "available"
-                  }`}
-                  onClick={() => {
-                    setConflict(null);
-                    dispatch({ type: "toggleSeat", seatId: seat.id });
-                  }}
-                  className={`aspect-square rounded-xl border text-sm font-semibold transition focus:ring-2 focus:ring-yellow-400/60 focus:outline-none ${
-                    occupied
-                      ? "cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-400"
-                      : selected
-                        ? "border-yellow-400 bg-yellow-400 text-black"
-                        : "border-neutral-300 bg-white text-neutral-900 hover:border-yellow-400"
-                  }`}
+            {/* Seat rows: A B | row number | C D */}
+            <div className="space-y-3">
+              {Array.from({ length: rowCount }, (_, row) => (
+                <div
+                  key={row}
+                  className="grid grid-cols-[3rem_3rem_2rem_3rem_3rem] items-center gap-3"
                 >
-                  {seat.seatNumber}
-                </button>
-              );
-            })}
+                  {renderSeat(row, 0)}
+                  {renderSeat(row, 1)}
+                  <span className="text-center text-xs text-neutral-400">
+                    {row + 1}
+                  </span>
+                  {renderSeat(row, 2)}
+                  {renderSeat(row, 3)}
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-6 border-t border-neutral-300 pt-4 text-center text-xs font-semibold tracking-[0.25em] text-neutral-500 uppercase">
+              Rear
+            </p>
           </div>
         )}
 
