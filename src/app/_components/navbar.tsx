@@ -25,8 +25,8 @@ export function Navbar() {
 
   return (
     <header className="bg-neutral-950">
-      <nav className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
-        <Link href="/" className="flex items-center gap-3">
+      <nav className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+        <Link href="/" className="flex shrink-0 items-center gap-3">
           <Image
             src="/Logo.png"
             alt="Logo"
@@ -34,10 +34,13 @@ export function Navbar() {
             height={64}
             className="h-10 w-10 rounded-xl object-cover"
           />
-          <span className="text-xl font-semibold text-white">JFA Transit</span>
+          <span className="text-lg font-semibold text-white sm:text-xl">
+            JFA Transit
+          </span>
         </Link>
 
-        <ul className="items-center gap-8 md:flex">
+        {/* Hidden on phones: the logo goes home and the account menu has My bookings. */}
+        <ul className="hidden items-center gap-8 md:flex">
           {links.map((link) => (
             <li key={link.href}>
               <Link
@@ -55,13 +58,15 @@ export function Navbar() {
             <span className="h-9 w-24 rounded-xl bg-white/10" />
           ) : session ? (
             <details className="group relative">
-              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-white/30 px-4 py-2 text-sm font-semibold text-white transition hover:border-yellow-400 hover:text-yellow-400 [&::-webkit-details-marker]:hidden">
-                {session.user.name}
+              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-white/30 px-3 py-2 text-sm font-semibold text-white transition hover:border-yellow-400 hover:text-yellow-400 sm:px-4 [&::-webkit-details-marker]:hidden">
+                <span className="max-w-[5.5rem] truncate sm:max-w-[14rem]">
+                  {session.user.name}
+                </span>
                 <svg
                   aria-hidden="true"
                   viewBox="0 0 20 20"
                   fill="currentColor"
-                  className="h-4 w-4 transition group-open:rotate-180"
+                  className="h-4 w-4 shrink-0 transition group-open:rotate-180"
                 >
                   <path
                     fillRule="evenodd"
