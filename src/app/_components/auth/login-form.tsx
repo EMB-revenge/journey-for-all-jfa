@@ -43,7 +43,7 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
   }
 
   return (
-    <div className="w-full rounded-3xl border border-neutral-200 bg-white p-8">
+    <div className="w-full rounded-3xl border border-neutral-200 bg-white p-6 sm:p-8">
       <h1 className="text-2xl font-bold text-neutral-900">Sign in</h1>
       <p className="mt-2 text-sm text-neutral-600">
         Use the email and password you signed up with.
