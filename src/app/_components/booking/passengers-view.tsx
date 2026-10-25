@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { HoldCountdown } from "~/app/_components/booking/hold-countdown";
-import { formatDuration, formatLongDate, formatTime } from "~/app/_lib/format";
+import { formatDuration, formatLongDate, formatTime, seatLabel } from "~/app/_lib/format";
 import { useAuth } from "~/context/AuthContext";
 import { useBookingFlow } from "~/context/BookingFlowProvider";
 import { fieldErrors, passengerSchema } from "~/lib/schemas";
@@ -222,7 +222,7 @@ export function PassengersView({ params }: { params: SeatMapParams }) {
           </p>
           <p className="mt-1 font-semibold text-neutral-900">
             {seatNumbers.length > 0
-              ? seatNumbers.join(", ")
+              ? seatNumbers.map(seatLabel).join(", ")
               : `${state.selectedSeatIds.length} selected`}
           </p>
           {data && (
@@ -246,7 +246,10 @@ export function PassengersView({ params }: { params: SeatMapParams }) {
                 className="rounded-2xl border border-neutral-200 bg-white p-6"
               >
                 <h2 className="text-lg font-semibold text-neutral-900">
-                  Passenger {index + 1} · Seat {seat.seatNumber}
+                  Passenger {index + 1} · Seat{" "}
+                  {seat.seatNumber !== undefined
+                    ? seatLabel(seat.seatNumber)
+                    : ""}
                 </h2>
 
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
