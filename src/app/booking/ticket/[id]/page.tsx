@@ -121,20 +121,19 @@ export default async function TicketPage({
             <h2 className="text-lg font-semibold text-neutral-900">
               {booking.seats.length === 1 ? "Passenger" : "Passengers"}
             </h2>
+            <p className="mt-1 text-sm break-all text-neutral-500">
+              Contact: {booking.contact.name} · {booking.contact.email}
+              {booking.contact.phone ? ` · ${booking.contact.phone}` : ""}
+            </p>
             <ul className="mt-4 divide-y divide-neutral-200">
               {booking.seats.map((seat) => (
                 <li
                   key={seat.id}
                   className="flex flex-wrap items-baseline justify-between gap-2 py-3"
                 >
-                  <div className="min-w-0">
-                    <p className="font-semibold break-words text-neutral-900">
-                      {seat.passengerName}
-                    </p>
-                    <p className="text-sm break-all text-neutral-500">
-                      {seat.passengerEmail} · {seat.passengerPhone}
-                    </p>
-                  </div>
+                  <p className="font-semibold break-words text-neutral-900">
+                    {seat.passengerName}
+                  </p>
                   <p className="text-sm font-semibold text-neutral-900">
                     Seat {seatLabel(seat.seatNumber)}
                   </p>

@@ -5,24 +5,26 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { HoldCountdown } from "~/app/_components/booking/hold-countdown";
-import { formatDuration, formatLongDate, formatTime, seatLabel } from "~/app/_lib/format";
+import {
+  formatDuration,
+  formatLongDate,
+  formatTime,
+  seatLabel,
+} from "~/app/_lib/format";
 import { useAuth } from "~/context/AuthContext";
 import { useBookingFlow } from "~/context/BookingFlowProvider";
-import { fieldErrors, passengerSchema } from "~/lib/schemas";
+import { fieldErrors, passengerSchema, phoneSchema } from "~/lib/schemas";
 import { searchHref, seatMapHref, type SeatMapParams } from "~/lib/seat-map";
 import type { PassengerDetail } from "~/reducers/bookingFlowReducer";
+import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
-
-type Draft = { name: string; email: string; phone: string };
-
-const emptyDraft: Draft = { name: "", email: "", phone: "" };
 
 const fieldClass =
   "w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-base text-neutral-900 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40 focus:outline-none";
 
 /**
- * Passenger details for the held seats: one name, email, and phone per seat
- * (SPEC 20.8). Saves to the booking flow and continues to the summary.
+ * The held seats only need a name each. Contact details come from the account,
+ * so this page never asks for an email or phone twice (SPEC 20.8).
  */
 export function PassengersView({ params }: { params: SeatMapParams }) {
   const router = useRouter();
@@ -31,17 +33,13 @@ export function PassengersView({ params }: { params: SeatMapParams }) {
   const { state, dispatch } = useBookingFlow();
   const [mounted, setMounted] = useState(false);
 
-  const [drafts, setDrafts] = useState<Record<string, Draft>>(() =>
-    Object.fromEntries(
-      state.passengerDetails.map((p) => [
-        p.seatId,
-        { name: p.name, email: p.email, phone: p.phone },
-      ]),
-    ),
+  const [names, setNames] = useState<Record<string, string>>(() =>
+    Object.fromEntries(state.passengerDetails.map((p) => [p.seatId, p.name])),
   );
-  const [errors, setErrors] = useState<Record<string, Record<string, string>>>(
-    {},
-  );
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  /** Only used when an older account has no phone yet. */
+  const [contactPhone, setContactPhone] = useState("");
+  const [savingPhone, setSavingPhone] = useState(false);
 
   // The hold lives in client state only, so render it after hydration.
   useEffect(() => {
@@ -98,51 +96,56 @@ export function PassengersView({ params }: { params: SeatMapParams }) {
   }, [dispatch, params, releaseHolds, router, utils]);
 
   /** The first passenger starts from the signed-in account. */
-  function getDraft(seatId: string, index: number): Draft {
-    const saved = drafts[seatId];
-    if (saved) return saved;
-    if (index === 0) {
-      return {
-        name: session?.user.name ?? "",
-        email: session?.user.email ?? "",
-        phone: "",
-      };
-    }
-    return emptyDraft;
+  function getName(seatId: string, index: number): string {
+    const saved = names[seatId];
+    if (saved !== undefined) return saved;
+    return index === 0 ? (session?.user.name ?? "") : "";
   }
 
-  function updateDraft(
-    seatId: string,
-    index: number,
-    field: keyof Draft,
-    value: string,
-  ) {
-    setDrafts((prev) => ({
-      ...prev,
-      [seatId]: {
-        ...(prev[seatId] ?? getDraft(seatId, index)),
-        [field]: value,
-      },
-    }));
-  }
-
-  function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    const nextErrors: Record<string, Record<string, string>> = {};
+    const nextErrors: Record<string, string> = {};
     const passengers: PassengerDetail[] = [];
 
     orderedSeats.forEach((seat, index) => {
       const parsed = passengerSchema.safeParse({
         seatId: seat.id,
-        ...getDraft(seat.id, index),
+        name: getName(seat.id, index),
       });
       if (parsed.success) passengers.push(parsed.data);
-      else nextErrors[seat.id] = fieldErrors(parsed.error);
+      else
+        nextErrors[`seat-${seat.id}`] =
+          fieldErrors(parsed.error).name ?? "Enter a name";
     });
 
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
+
+    // Accounts created before signup asked for a number fill it in once here.
+    if (!session?.user.phone) {
+      const parsedPhone = phoneSchema.safeParse(contactPhone);
+      if (!parsedPhone.success) {
+        setErrors({
+          contact:
+            fieldErrors(parsedPhone.error).phone ??
+            "Enter a valid phone number",
+        });
+        return;
+      }
+
+      setSavingPhone(true);
+      const { error } = await authClient.updateUser({
+        phone: parsedPhone.data,
+      });
+      setSavingPhone(false);
+      if (error) {
+        setErrors({
+          contact: error.message ?? "Could not save your phone number.",
+        });
+        return;
+      }
+    }
 
     dispatch({ type: "passengersSaved", passengers });
     router.push(seatMapHref(params, "/booking/summary"));
@@ -234,11 +237,53 @@ export function PassengersView({ params }: { params: SeatMapParams }) {
         </div>
       </div>
 
+      <div className="rounded-2xl border border-neutral-200 bg-white p-6">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-lg font-semibold text-neutral-900">
+            Contact for this booking
+          </h2>
+          <Link
+            href="/account"
+            className="text-sm font-semibold text-neutral-700 underline decoration-neutral-300 underline-offset-4"
+          >
+            Edit in account
+          </Link>
+        </div>
+        <p className="mt-1 text-sm text-neutral-500">
+          {session?.user.name} · {session?.user.email}
+        </p>
+
+        {session?.user.phone ? (
+          <p className="mt-1 text-sm text-neutral-500">{session.user.phone}</p>
+        ) : (
+          <label className="mt-4 block">
+            <span className="mb-2 block text-sm text-neutral-600">
+              Mobile number
+            </span>
+            <input
+              type="tel"
+              value={contactPhone}
+              onChange={(e) => setContactPhone(e.target.value)}
+              className={fieldClass}
+              autoComplete="tel"
+            />
+            {errors.contact ? (
+              <span className="mt-1 block text-sm text-red-600">
+                {errors.contact}
+              </span>
+            ) : (
+              <span className="mt-1 block text-sm text-neutral-500">
+                Saved to your account for next time.
+              </span>
+            )}
+          </label>
+        )}
+      </div>
+
       {data ? (
         <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           {orderedSeats.map((seat, index) => {
-            const draft = getDraft(seat.id, index);
-            const seatErrors = errors[seat.id] ?? {};
+            const seatError = errors[`seat-${seat.id}`];
 
             return (
               <div
@@ -252,66 +297,27 @@ export function PassengersView({ params }: { params: SeatMapParams }) {
                     : ""}
                 </h2>
 
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <label className="block sm:col-span-2">
-                    <span className="mb-2 block text-sm text-neutral-600">
-                      Full name
+                <label className="mt-4 block">
+                  <span className="mb-2 block text-sm text-neutral-600">
+                    Full name
+                  </span>
+                  <input
+                    value={getName(seat.id, index)}
+                    onChange={(e) =>
+                      setNames((prev) => ({
+                        ...prev,
+                        [seat.id]: e.target.value,
+                      }))
+                    }
+                    className={fieldClass}
+                    autoComplete="name"
+                  />
+                  {seatError && (
+                    <span className="mt-1 block text-sm text-red-600">
+                      {seatError}
                     </span>
-                    <input
-                      value={draft.name}
-                      onChange={(e) =>
-                        updateDraft(seat.id, index, "name", e.target.value)
-                      }
-                      className={fieldClass}
-                      autoComplete="name"
-                    />
-                    {seatErrors.name && (
-                      <span className="mt-1 block text-sm text-red-600">
-                        {seatErrors.name}
-                      </span>
-                    )}
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-neutral-600">
-                      Email
-                    </span>
-                    <input
-                      type="email"
-                      value={draft.email}
-                      onChange={(e) =>
-                        updateDraft(seat.id, index, "email", e.target.value)
-                      }
-                      className={fieldClass}
-                      autoComplete="email"
-                    />
-                    {seatErrors.email && (
-                      <span className="mt-1 block text-sm text-red-600">
-                        {seatErrors.email}
-                      </span>
-                    )}
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-neutral-600">
-                      Phone number
-                    </span>
-                    <input
-                      type="tel"
-                      value={draft.phone}
-                      onChange={(e) =>
-                        updateDraft(seat.id, index, "phone", e.target.value)
-                      }
-                      className={fieldClass}
-                      autoComplete="tel"
-                    />
-                    {seatErrors.phone && (
-                      <span className="mt-1 block text-sm text-red-600">
-                        {seatErrors.phone}
-                      </span>
-                    )}
-                  </label>
-                </div>
+                  )}
+                </label>
               </div>
             );
           })}
@@ -334,7 +340,8 @@ export function PassengersView({ params }: { params: SeatMapParams }) {
             </div>
             <button
               type="submit"
-              className="rounded-xl bg-yellow-400 px-8 py-3 text-base font-semibold text-black transition hover:bg-yellow-300"
+              disabled={savingPhone}
+              className="rounded-xl bg-yellow-400 px-8 py-3 text-base font-semibold text-black transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Review booking
             </button>

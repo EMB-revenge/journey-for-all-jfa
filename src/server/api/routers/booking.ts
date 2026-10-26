@@ -13,6 +13,7 @@ import {
 
 const bookingInclude = {
   seats: { include: { seat: { select: { seatNumber: true } } } },
+  user: { select: { name: true, email: true, phone: true } },
   schedule: {
     include: {
       bus: { include: { busType: true } },
@@ -41,13 +42,17 @@ function shapeBooking(b: BookingRow) {
     durationMinutes: b.schedule.route.durationMinutes,
     busName: b.schedule.bus.name,
     busType: b.schedule.bus.busType.name,
+    /** The account that booked. Passenger rows are names only. */
+    contact: {
+      name: b.user.name,
+      email: b.user.email,
+      phone: b.user.phone,
+    },
     seats: b.seats
       .map((s) => ({
         id: s.id,
         seatNumber: s.seat.seatNumber,
         passengerName: s.passengerName,
-        passengerEmail: s.passengerEmail,
-        passengerPhone: s.passengerPhone,
       }))
       .sort((a, c) => a.seatNumber - c.seatNumber),
   };
@@ -148,8 +153,6 @@ export const bookingRouter = createTRPCRouter({
                     scheduleId: schedule.id,
                     seatId: p.seatId,
                     passengerName: p.name,
-                    passengerEmail: p.email,
-                    passengerPhone: p.phone,
                   })),
                 },
               },
@@ -207,7 +210,6 @@ export const bookingRouter = createTRPCRouter({
       return shapeBooking(booking);
     }),
 
-    
   /**
    * Public ticket check behind the QR code. References are sequential, so this
    * returns no contact details or fare, and masks passenger names.

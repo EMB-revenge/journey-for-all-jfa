@@ -94,8 +94,6 @@ const passengers = [
   {
     seatId: "seat-1",
     name: "Juan Dela Cruz",
-    email: "juan@email.com",
-    phone: "09123456789",
   },
 ];
 const saved = bookingFlowReducer(cleared, {

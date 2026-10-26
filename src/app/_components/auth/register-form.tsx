@@ -15,6 +15,7 @@ export function RegisterForm() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -28,6 +29,7 @@ export function RegisterForm() {
     const parsed = registerSchema.safeParse({
       name,
       email,
+      phone,
       password,
       confirmPassword,
     });
@@ -41,6 +43,7 @@ export function RegisterForm() {
     const { error } = await authClient.signUp.email({
       name: parsed.data.name,
       email: parsed.data.email,
+      phone: parsed.data.phone,
       password: parsed.data.password,
     });
     if (error) {
@@ -97,6 +100,28 @@ export function RegisterForm() {
           {errors.email && (
             <span className="mt-1 block text-sm text-red-600">
               {errors.email}
+            </span>
+          )}
+        </label>
+
+        <label className="block">
+          <span className="mb-2 block text-sm text-neutral-600">
+            Mobile number
+          </span>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className={fieldClass}
+            autoComplete="tel"
+          />
+          {errors.phone ? (
+            <span className="mt-1 block text-sm text-red-600">
+              {errors.phone}
+            </span>
+          ) : (
+            <span className="mt-1 block text-sm text-neutral-500">
+              Your tickets use this number. You can change it later.
             </span>
           )}
         </label>

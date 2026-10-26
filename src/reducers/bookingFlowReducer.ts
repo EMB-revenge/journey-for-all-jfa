@@ -7,8 +7,6 @@
 export type PassengerDetail = {
   seatId: string;
   name: string;
-  email: string;
-  phone: string;
 };
 
 export type BookingFlowState = {

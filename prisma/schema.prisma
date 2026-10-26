@@ -232,14 +232,16 @@ model Booking {
 
 // UNIQUE(scheduleId, seatId) here is what stops a seat being double-booked
 // (SPEC 8.6).
+// Passenger contact comes from the booking's account, so email and phone stay
+// nullable: they only hold data from bookings made before SPEC 20.8 changed.
 model BookingSeat {
   id             String   @id @default(cuid())
   bookingId      String
   scheduleId     String
   seatId         String
   passengerName  String
-  passengerEmail String
-  passengerPhone String
+  passengerEmail String?
+  passengerPhone String?
   createdAt      DateTime @default(now())
 
   booking  Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)

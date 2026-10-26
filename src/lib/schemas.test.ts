@@ -7,6 +7,8 @@ import {
   confirmBookingSchema,
   createHoldSchema,
   passengerSchema,
+  phoneSchema,
+  registerSchema,
   releaseHoldsSchema,
   scheduleSeatsSchema,
 } from "~/lib/schemas";
@@ -72,37 +74,62 @@ assert.equal(
   "dates stay YYYY-MM-DD",
 );
 
-// Passenger details: one per seat, trimmed, with a loose PH-friendly phone.
+// Passenger details: one name per seat, trimmed. Contact lives on the account.
 const passenger = (seatId: string, overrides = {}) => ({
   seatId,
   name: "  Juan Dela Cruz  ",
-  email: "juan@email.com",
-  phone: "+63 912 345 6789",
   ...overrides,
 });
 
 const trimmed = passengerSchema.parse(passenger("seat-1"));
 assert.equal(trimmed.name, "Juan Dela Cruz", "names are trimmed");
-assert.equal(trimmed.phone, "+63 912 345 6789");
 
 assert.equal(
   passengerSchema.safeParse(passenger("seat-1", { name: "J" })).success,
   false,
   "a one-letter name is invalid",
 );
+
+// The account's phone, loose but PH-friendly.
+assert.equal(phoneSchema.safeParse("+63 912 345 6789").success, true);
 assert.equal(
-  passengerSchema.safeParse(passenger("seat-1", { email: "nope" })).success,
-  false,
-);
-assert.equal(
-  passengerSchema.safeParse(passenger("seat-1", { phone: "call me" })).success,
+  phoneSchema.safeParse("call me").success,
   false,
   "phone rejects letters",
 );
 assert.equal(
-  passengerSchema.safeParse(passenger("seat-1", { phone: "123" })).success,
+  phoneSchema.safeParse("123").success,
   false,
   "phone needs at least 7 characters",
+);
+
+// Signup carries the phone, so booking never has to ask for it.
+const signup = (overrides = {}) => ({
+  name: "Juan Dela Cruz",
+  email: "juan@email.com",
+  phone: "+63 912 345 6789",
+  password: "correct-horse",
+  confirmPassword: "correct-horse",
+  ...overrides,
+});
+
+assert.equal(registerSchema.safeParse(signup()).success, true);
+assert.equal(
+  registerSchema.safeParse(signup({ phone: "" })).success,
+  false,
+  "signup needs a phone number",
+);
+assert.equal(
+  registerSchema.safeParse(signup({ phone: "call me" })).success,
+  false,
+  "signup rejects a phone with letters",
+);
+assert.equal(
+  registerSchema.safeParse(
+    signup({ password: "short", confirmPassword: "short" }),
+  ).success,
+  false,
+  "passwords stay at least 8 characters",
 );
 
 const confirm = (passengers: unknown[]) =>
