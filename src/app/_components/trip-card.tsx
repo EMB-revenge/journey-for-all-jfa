@@ -69,9 +69,21 @@ export function TripCard({
         ) : (
           <Link
             href={seatMapHref}
-            className="rounded-xl bg-yellow-400 px-6 py-3 text-sm font-semibold text-black transition hover:bg-yellow-300"
+            className="group inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-6 py-3 text-sm font-semibold text-black transition hover:-translate-y-0.5 hover:bg-yellow-300 hover:shadow-md focus:ring-2 focus:ring-yellow-400/60 focus:outline-none active:translate-y-0"
           >
             Select seat
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+            >
+              <path
+                fillRule="evenodd"
+                d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z"
+                clipRule="evenodd"
+              />
+            </svg>
           </Link>
         )}
       </div>
