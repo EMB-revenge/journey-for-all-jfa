@@ -3,7 +3,7 @@ import { type Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-
+import { DownloadTicketButton } from "~/app/_components/booking/download-ticket-button";
 import { TicketQr } from "~/app/_components/booking/ticket-qr";
 import { Navbar } from "~/app/_components/navbar";
 import {
@@ -70,7 +70,10 @@ export default async function TicketPage({
           </span>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+        <div
+          id="ticket-card"
+          className="mt-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white"
+        >
           <div className="flex flex-wrap items-baseline justify-between gap-2 bg-neutral-900 px-6 py-4">
             <p className="text-sm text-white/70">Booking reference</p>
             <p className="font-mono text-lg font-bold text-yellow-400">
@@ -173,7 +176,11 @@ export default async function TicketPage({
           Arrive 30 minutes early and present this ticket when boarding.
         </p>
 
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div className="mt-8 flex flex-wrap items-start gap-3">
+          <DownloadTicketButton
+            targetId="ticket-card"
+            fileName={`ticket-${booking.bookingReference}`}
+          />
           <Link
             href="/my-bookings"
             className="rounded-xl border border-neutral-300 px-6 py-3 text-sm font-semibold text-neutral-900 transition hover:border-yellow-400"
