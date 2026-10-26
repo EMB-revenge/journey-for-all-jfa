@@ -2,8 +2,10 @@ import { TRPCError } from "@trpc/server";
 import { type Metadata } from "next";
 import Link from "next/link";
 
+import { CheckInButton } from "~/app/_components/booking/check-in-button";
 import { Navbar } from "~/app/_components/navbar";
 import {
+  formatBookedAt,
   formatLongDate,
   formatTime,
   seatLabel,
@@ -12,28 +14,53 @@ import { api } from "~/trpc/server";
 
 export const metadata: Metadata = { title: "Verify ticket | JFA Transit" };
 
-const statusStyles: Record<string, { label: string; className: string }> = {
-  CONFIRMED: {
-    label: "Valid ticket",
-    className: "border-green-200 bg-green-50 text-green-800",
-  },
-  CANCELLED: {
-    label: "Cancelled booking",
-    className: "border-red-200 bg-red-50 text-red-700",
-  },
+type VerifyState = {
+  status: string;
+  checkedInAt: Date | null;
+  scheduleCancelled: boolean;
 };
+
+function stateFor(booking: VerifyState) {
+  if (booking.checkedInAt) {
+    return {
+      label: "Boarded",
+      className: "border-blue-200 bg-blue-50 text-blue-800",
+    };
+  }
+  if (booking.scheduleCancelled) {
+    return {
+      label: "Trip cancelled",
+      className: "border-red-200 bg-red-50 text-red-700",
+    };
+  }
+  if (booking.status === "CONFIRMED") {
+    return {
+      label: "Valid ticket",
+      className: "border-green-200 bg-green-50 text-green-800",
+    };
+  }
+  if (booking.status === "CANCELLED") {
+    return {
+      label: "Cancelled booking",
+      className: "border-red-200 bg-red-50 text-red-700",
+    };
+  }
+  return {
+    label: booking.status,
+    className: "border-amber-200 bg-amber-50 text-amber-800",
+  };
+}
 
 export default async function VerifyPage({
   params,
 }: {
-  params: Promise<{ reference: string }>;
+  params: Promise<{ code: string }>;
 }) {
-  const { reference: rawReference } = await params;
-  const reference = decodeURIComponent(rawReference);
+  const { code } = await params;
 
   let booking;
   try {
-    booking = await api.booking.verify({ reference });
+    booking = await api.booking.verify({ code });
   } catch (error) {
     if (error instanceof TRPCError && error.code === "NOT_FOUND") {
       booking = null;
@@ -42,36 +69,41 @@ export default async function VerifyPage({
     }
   }
 
+  const state = booking ? stateFor(booking) : null;
+
   return (
     <>
       <Navbar />
       <main className="mx-auto max-w-xl px-4 py-10 sm:px-6">
-        {!booking ? (
+        {!booking || !state ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-6 py-10 text-center">
             <p className="text-xl font-bold text-red-700">Ticket not found</p>
             <p className="mt-2 text-sm text-red-700">
-              No booking matches {reference}. Do not accept this ticket.
+              No booking matches this code. Do not accept this ticket.
             </p>
           </div>
         ) : (
           <>
             <div
-              className={`rounded-2xl border px-6 py-8 text-center ${
-                (statusStyles[booking.status] ?? {
-                  className: "border-amber-200 bg-amber-50 text-amber-800",
-                }).className
-              }`}
+              className={`rounded-2xl border px-6 py-8 text-center ${state.className}`}
             >
               <p className="text-sm font-semibold tracking-[0.25em] uppercase">
                 Ticket check
               </p>
-              <p className="mt-2 text-3xl font-bold">
-                {statusStyles[booking.status]?.label ?? booking.status}
-              </p>
+              <p className="mt-2 text-3xl font-bold">{state.label}</p>
               <p className="mt-2 font-mono text-sm">
                 {booking.bookingReference}
               </p>
+              {booking.checkedInAt && (
+                <p className="mt-1 text-sm font-semibold">
+                  Boarded at {formatBookedAt(booking.checkedInAt)}
+                </p>
+              )}
             </div>
+
+            {booking.status === "CONFIRMED" &&
+              !booking.scheduleCancelled &&
+              !booking.checkedInAt && <CheckInButton code={code} />}
 
             <div className="mt-6 rounded-2xl border border-neutral-200 bg-white p-6">
               <h1 className="text-xl font-bold text-neutral-900">
