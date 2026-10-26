@@ -23,7 +23,7 @@ A web app for booking one-way intercity(In Panay Island for now) bus trips: sear
 ### MVP goals
 
 - Passenger register/login, search, seat selection, multi-seat booking (1–6), digital ticket, booking history
-- Admin CRUD for cities, buses, routes, schedules; view all bookings
+- Admin CRUD for cities, buses, routes, schedules; view all bookings; check a ticket in once
 - Accurate seat availability (no double-booking)
 - Unique sequential booking references
 - Fixed route fares with a snapshot stored on each booking
@@ -32,7 +32,7 @@ A web app for booking one-way intercity(In Panay Island for now) bus trips: sear
 
 - Real payment gateway (bookings auto-confirm)
 - Passenger or admin cancellation UI
-- Check-in, no-show, waitlist, overbooking, GPS, SMS
+- No-show, waitlist, overbooking, GPS, SMS
 - Round-trip bookings
 - Student/senior/PWD discounts
 - Per-seat VIP pricing
@@ -42,7 +42,7 @@ A web app for booking one-way intercity(In Panay Island for now) bus trips: sear
 ### Future, schema-friendly, not built
 
 - Simulated payment status (`PENDING_PAYMENT` → `CONFIRMED`)
-- Cancellation / no-show / check-in / waitlist, as new `BookingStatus` values. Bookings are never deleted; cancelling releases seats
+- Cancellation / no-show / waitlist, as new `BookingStatus` values. Bookings are never deleted; cancelling releases seats
 - Per-seat fare snapshot on `booking_seats` for discounts
 - Round-trip, as a second schedule on a booking
 
@@ -252,6 +252,12 @@ Format `BK-YYYYMMDD-NNNNNN`, generated in the backend during the confirm transac
 
 `BookingCounter` holds one row per day. Inside the transaction, `upsert` with `lastNumber: { increment: 1 }` and read the result. The unique constraint on `bookings.bookingReference` is the backstop: on a collision, retry the increment. This works without a long-running process, which matters because the app runs on serverless.
 
+### 10.1 Ticket verification
+
+`booking.verificationCode` is a random UUID set at confirm, so the QR URL cannot be walked like the sequential reference. The QR opens `/verify/[code]`, a public read-only page that masks passenger names and shows no fare or contact details.
+
+Admins signed in on that page see a "Mark boarded" button. `booking.checkIn` sets `checkedInAt` once, only for a `CONFIRMED` booking whose schedule is not cancelled and whose travel date is today in Manila. The conditional `updateMany` on `checkedInAt IS NULL` makes a second scan report the original time instead of writing twice. Passengers cannot reach the mutation; `adminProcedure` is the gate.
+
 ---
 
 ## 11. Passenger flow
@@ -331,19 +337,21 @@ Auth lives in Better Auth's own routes. Everything below is a procedure. All inp
 | `booking.confirm` | protected | `{ scheduleId, passengers: [{ seatId, name, email, phone }] }` | booking, seats, ticket payload | `CONFLICT` + `takenSeats` or `reason: "HOLD_EXPIRED"`, `PRECONDITION_FAILED` for a departed or cancelled schedule |
 | `booking.list` | protected | none | own bookings, newest first | |
 | `booking.get` | protected | `{ id }` | own booking with seats | `NOT_FOUND` |
+| `booking.verify` | public | `{ code }` | ticket check: status, route, date, masked passengers, `checkedInAt` | `NOT_FOUND` |
+| `booking.checkIn` | admin | `{ code }` | `{ checkedInAt, alreadyCheckedIn }` | `NOT_FOUND`, `PRECONDITION_FAILED`, `CONFLICT` |
 | `admin.city.*` | admin | CRUD | | `CONFLICT` on duplicate name |
 | `admin.bus.*` | admin | CRUD, creates seats on create | | `CONFLICT` on duplicate plate |
 | `admin.route.*` | admin | CRUD | | `CONFLICT` on duplicate origin/dest |
 | `admin.schedule.*` | admin | CRUD, no fare field | | `CONFLICT` on duplicate bus/date/time |
 | `admin.booking.list` | admin | optional date and route filters | all bookings | |
 
-Bookings are read-only for admins. Cancelling a schedule sets `isCancelled`.
+Bookings are read-only for admins, apart from check-in. Cancelling a schedule sets `isCancelled`.
 
 ---
 
 ## 15. Admin flow
 
-Login → sidebar (Cities | Buses | Routes | Schedules | Bookings), no separate dashboard home. `/admin` redirects to the first section. Each of Cities, Buses, Routes, Schedules uses one pattern: table of records, "Add" button opens a form, Edit/Deactivate per row. Bookings is a read-only table with date/route filters.
+Login → sidebar (Cities | Buses | Routes | Schedules | Bookings), no separate dashboard home. `/admin` redirects to the first section. Each of Cities, Buses, Routes, Schedules uses one pattern: table of records, "Add" button opens a form, Edit/Deactivate per row. Bookings is a read-only table with date/route filters and a check-in action.
 
 Creating a bus creates its seats in the same transaction. Deleting is limited to records with no dependencies; anything referenced by a schedule or booking gets `isActive = false` or `isCancelled = true` instead.
 
@@ -352,6 +360,8 @@ Creating a bus creates its seats in the same transaction. Deleting is limited to
 ## 16. Pages and state
 
 **Passenger:** `/` search, `/login`, `/register`, `/change-password`, `/booking/seat-map`, `/booking/passengers`, `/booking/summary`, `/booking/ticket/[id]`, `/my-bookings`
+
+**Public:** `/verify/[code]` (read-only ticket check behind the QR)
 
 **Admin:** `/admin` redirects to `/admin/cities`; `/admin/cities`, `/admin/buses`, `/admin/routes`, `/admin/schedules`, `/admin/bookings`
 

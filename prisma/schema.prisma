@@ -215,6 +215,10 @@ model Booking {
   userId           String
   scheduleId       String
   bookingReference String        @unique
+  // Random, so the public QR URL cannot be guessed from the sequential
+  // reference. Also the check-in lookup key.
+  verificationCode String        @unique
+  checkedInAt      DateTime?
   unitFare         Decimal       @db.Decimal(10, 2)
   totalAmount      Decimal       @db.Decimal(10, 2)
   status           BookingStatus @default(CONFIRMED)
