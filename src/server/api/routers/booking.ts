@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-
+import { z } from "zod";
 import type { Prisma } from "../../../../generated/prisma";
 import { isDeparted, todayInManila } from "~/lib/dates";
 import { isUniqueViolation } from "~/lib/errors";
@@ -8,6 +8,7 @@ import {
   conflict,
   createTRPCRouter,
   protectedProcedure,
+  publicProcedure,
 } from "~/server/api/trpc";
 
 const bookingInclude = {
@@ -204,5 +205,42 @@ export const bookingRouter = createTRPCRouter({
       });
       if (!booking) throw new TRPCError({ code: "NOT_FOUND" });
       return shapeBooking(booking);
+    }),
+
+    
+  /**
+   * Public ticket check behind the QR code. References are sequential, so this
+   * returns no contact details or fare, and masks passenger names.
+   */
+  verify: publicProcedure
+    .input(z.object({ reference: z.string().trim().min(1).max(40) }))
+    .query(async ({ ctx, input }) => {
+      const booking = await ctx.db.booking.findUnique({
+        where: { bookingReference: input.reference },
+        include: bookingInclude,
+      });
+      if (!booking) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const shaped = shapeBooking(booking);
+      return {
+        bookingReference: shaped.bookingReference,
+        status: shaped.status,
+        originCity: shaped.originCity,
+        destCity: shaped.destCity,
+        travelDate: shaped.travelDate,
+        departureTime: shaped.departureTime,
+        arrivalTime: shaped.arrivalTime,
+        busName: shaped.busName,
+        busType: shaped.busType,
+        passengers: shaped.seats.map((seat) => ({
+          id: seat.id,
+          seatNumber: seat.seatNumber,
+          maskedName: seat.passengerName
+            .split(/\s+/)
+            .filter(Boolean)
+            .map((part) => `${part[0] ?? ""}***`)
+            .join(" "),
+        })),
+      };
     }),
 });
