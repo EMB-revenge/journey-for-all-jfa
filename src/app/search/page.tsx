@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Navbar } from "~/app/_components/navbar";
+import { SearchForm } from "~/app/_components/search-form";
 import { TripCard } from "~/app/_components/trip-card";
 import { formatLongDate } from "~/app/_lib/format";
 import { seatMapHref } from "~/lib/seat-map";
@@ -41,7 +41,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       <Navbar />
       <main>
         <section className="bg-neutral-900">
-          <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-10 md:flex-row md:items-center md:justify-between">
+          <div className="mx-auto max-w-7xl px-6 py-10">
             <div>
               <p className="text-sm font-semibold tracking-[0.25em] text-yellow-400 uppercase">
                 Search results
@@ -51,12 +51,14 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               </h1>
               <p className="mt-1 text-white/70">{formatLongDate(date)}</p>
             </div>
-            <Link
-              href="/"
-              className="w-fit rounded-xl border border-white/30 px-5 py-3 text-sm font-semibold text-white transition hover:border-yellow-400 hover:text-yellow-400"
-            >
-              Change search
-            </Link>
+            <div className="mt-6">
+              <SearchForm
+                initialFrom={from}
+                initialTo={to}
+                initialDate={date}
+                initialPassengers={String(passengers)}
+              />
+            </div>
           </div>
         </section>
 

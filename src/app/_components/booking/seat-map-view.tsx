@@ -116,7 +116,53 @@ export function SeatMapView({ params }: { params: SeatMapParams }) {
 
   if (isLoading) {
     return (
-      <p className="py-16 text-center text-neutral-600">Loading seats...</p>
+      <div className="animate-pulse space-y-8">
+        <div className="space-y-2">
+          <div className="h-3 w-24 rounded bg-neutral-200" />
+          <div className="h-8 w-48 rounded bg-neutral-200" />
+          <div className="h-4 w-32 rounded bg-neutral-200" />
+        </div>
+        <div className="grid gap-4 rounded-2xl border border-neutral-200 bg-white p-6 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <div className="h-3 w-16 rounded bg-neutral-200" />
+              <div className="h-5 w-24 rounded bg-neutral-200" />
+            </div>
+          ))}
+        </div>
+        <div className="rounded-2xl border border-neutral-200 bg-white p-6">
+          <div className="flex items-center justify-between">
+            <div className="h-5 w-32 rounded bg-neutral-200" />
+            <div className="flex gap-4">
+              <div className="h-4 w-16 rounded bg-neutral-200" />
+              <div className="h-4 w-16 rounded bg-neutral-200" />
+              <div className="h-4 w-16 rounded bg-neutral-200" />
+            </div>
+          </div>
+          <div className="mx-auto mt-6 w-fit rounded-[2.5rem] border-2 border-neutral-200 bg-neutral-50 px-8 pt-6 pb-8">
+            <div className="mx-auto mb-4 h-2 w-3/4 rounded-full bg-neutral-200" />
+            <div className="mb-6 flex items-center justify-between border-b border-neutral-300 pb-4">
+              <div className="h-6 w-16 rounded-lg bg-neutral-200" />
+              <div className="h-3 w-12 rounded bg-neutral-200" />
+              <div className="h-6 w-12 rounded-lg bg-neutral-200" />
+            </div>
+            <div className="space-y-3">
+              {Array.from({ length: 6 }).map((_, row) => (
+                <div
+                  key={row}
+                  className="grid grid-cols-[3rem_3rem_2rem_3rem_3rem] items-center gap-3"
+                >
+                  <div className="h-12 w-12 rounded-xl bg-neutral-200" />
+                  <div className="h-12 w-12 rounded-xl bg-neutral-200" />
+                  <div className="h-3 w-4 rounded bg-neutral-200" />
+                  <div className="h-12 w-12 rounded-xl bg-neutral-200" />
+                  <div className="h-12 w-12 rounded-xl bg-neutral-200" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -162,7 +208,9 @@ export function SeatMapView({ params }: { params: SeatMapParams }) {
     !authPending;
 
   // Seats are stored 1..capacity and drawn four to a row: A B | aisle | C D.
-  const bySeatNumber = new Map(data.seats.map((seat) => [seat.seatNumber, seat]));
+  const bySeatNumber = new Map(
+    data.seats.map((seat) => [seat.seatNumber, seat]),
+  );
   const lastSeatNumber =
     data.seats.length > 0
       ? Math.max(...data.seats.map((seat) => seat.seatNumber))
@@ -197,7 +245,7 @@ export function SeatMapView({ params }: { params: SeatMapParams }) {
             ? "cursor-not-allowed border-neutral-200 bg-neutral-200 text-neutral-400"
             : selected
               ? "border-yellow-400 bg-yellow-400 text-black"
-              : "border-neutral-300 bg-white text-neutral-900 hover:border-yellow-400"
+              : "cursor-pointer border-neutral-300 bg-white text-neutral-900 transition hover:border-yellow-400 hover:bg-yellow-50 hover:shadow-sm focus:ring-yellow-400/60"
         }`}
       >
         {label}
@@ -287,7 +335,7 @@ export function SeatMapView({ params }: { params: SeatMapParams }) {
           </p>
         ) : (
           // bus outline
-          <div className="mt-6 mx-auto w-fit rounded-[2.5rem] border-2 border-neutral-300 bg-neutral-50 px-8 pt-6 pb-8">
+          <div className="mx-auto mt-6 w-fit rounded-[2.5rem] border-2 border-neutral-300 bg-neutral-50 px-8 pt-6 pb-8">
             {/* Front of the bus */}
             <div className="mx-auto mb-4 h-2 w-3/4 rounded-full bg-neutral-300" />
             <div className="mb-6 flex items-center justify-between border-b border-neutral-300 pb-4">
@@ -350,8 +398,11 @@ export function SeatMapView({ params }: { params: SeatMapParams }) {
               type="button"
               onClick={handleContinue}
               disabled={!canContinue}
-              className="rounded-xl bg-yellow-400 px-8 py-3 text-base font-semibold text-black transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:bg-yellow-400/40"
+              className="flex items-center justify-center gap-2 rounded-xl bg-yellow-400 px-8 py-3 text-base font-semibold text-black transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:bg-yellow-400/40"
             >
+              {createHold.isPending && (
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black" />
+              )}
               {createHold.isPending
                 ? "Holding seats..."
                 : session

@@ -1,21 +1,36 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 
 import { api } from "~/trpc/react";
 import { fieldErrors, searchTripsSchema } from "~/lib/schemas";
 import { todayInManila } from "~/lib/dates";
 
-export function SearchForm() {
+type SearchFormProps = {
+  initialFrom?: string;
+  initialTo?: string;
+  initialDate?: string;
+  initialPassengers?: string;
+};
+
+export function SearchForm({
+  initialFrom = "",
+  initialTo = "",
+  initialDate = "",
+  initialPassengers = "1",
+}: SearchFormProps) {
   const router = useRouter();
   const { data: cities, isLoading } = api.city.list.useQuery();
+  const [isPending, startTransition] = useTransition();
 
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [date, setDate] = useState("");
-  const [passengers, setPassengers] = useState("1");
+  const [from, setFrom] = useState(initialFrom);
+  const [to, setTo] = useState(initialTo);
+  const [date, setDate] = useState(initialDate);
+  const [passengers, setPassengers] = useState(initialPassengers);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // shortcut: state seeds once on mount. Back/forward through old searches can
+  // show stale fields; give the form a key if that needs to sync with the URL.
 
   const today = todayInManila();
 
@@ -40,7 +55,9 @@ export function SearchForm() {
       date: parsed.data.date,
       passengers: String(parsed.data.passengers),
     });
-    router.push(`/search?${params.toString()}`);
+    startTransition(() => {
+      router.push(`/search?${params.toString()}`);
+    });
   }
 
   const fieldClass =
@@ -143,9 +160,13 @@ export function SearchForm() {
 
         <button
           type="submit"
-          className="rounded-xl bg-yellow-400 px-8 py-3 text-base font-semibold text-black transition hover:bg-yellow-300 sm:py-4 md:col-span-2 lg:col-span-1"
+          disabled={isPending}
+          className="flex items-center justify-center gap-2 rounded-xl bg-yellow-400 px-8 py-3 text-base font-semibold text-black transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60 sm:py-4 md:col-span-2 lg:col-span-1"
         >
-          Search trips
+          {isPending && (
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black" />
+          )}
+          {isPending ? "Searching..." : "Search trips"}
         </button>
       </div>
     </form>
