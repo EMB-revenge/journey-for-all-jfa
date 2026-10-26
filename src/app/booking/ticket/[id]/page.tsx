@@ -1,14 +1,17 @@
 import { TRPCError } from "@trpc/server";
 import { type Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-
+import { DownloadTicketButton } from "~/app/_components/booking/download-ticket-button";
+import { TicketQr } from "~/app/_components/booking/ticket-qr";
 import { Navbar } from "~/app/_components/navbar";
 import {
   formatBookedAt,
   formatDuration,
   formatLongDate,
   formatTime,
+  seatLabel,
 } from "~/app/_lib/format";
 import { api } from "~/trpc/server";
 
@@ -34,25 +37,43 @@ export default async function TicketPage({
     throw error;
   }
 
+  // The QR points at this site's own public verify page.
+  const requestHeaders = await headers();
+  const host =
+    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  const protocol = requestHeaders.get("x-forwarded-proto") ?? "http";
+  const verifyUrl = `${protocol}://${host}/verify/${booking.bookingReference}`;
+
+  const confirmed = booking.status === "CONFIRMED";
+
   return (
     <>
       <Navbar />
-      <main className="mx-auto max-w-3xl px-6 py-10">
+      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold tracking-[0.25em] text-neutral-500 uppercase">
-              Booking confirmed
+              {confirmed ? "Booking confirmed" : "Booking status"}
             </p>
-            <h1 className="mt-2 text-3xl font-bold text-neutral-900">
+            <h1 className="mt-2 text-2xl font-bold text-neutral-900 sm:text-3xl">
               {booking.originCity} → {booking.destCity}
             </h1>
           </div>
-          <span className="rounded-lg bg-green-100 px-3 py-1 text-sm font-bold text-green-800">
+          <span
+            className={`rounded-lg px-3 py-1 text-sm font-bold ${
+              confirmed
+                ? "bg-green-100 text-green-800"
+                : "bg-red-100 text-red-700"
+            }`}
+          >
             {booking.status}
           </span>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+        <div
+          id="ticket-card"
+          className="mt-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white"
+        >
           <div className="flex flex-wrap items-baseline justify-between gap-2 bg-neutral-900 px-6 py-4">
             <p className="text-sm text-white/70">Booking reference</p>
             <p className="font-mono text-lg font-bold text-yellow-400">
@@ -106,16 +127,16 @@ export default async function TicketPage({
                   key={seat.id}
                   className="flex flex-wrap items-baseline justify-between gap-2 py-3"
                 >
-                  <div>
-                    <p className="font-semibold text-neutral-900">
+                  <div className="min-w-0">
+                    <p className="font-semibold break-words text-neutral-900">
                       {seat.passengerName}
                     </p>
-                    <p className="text-sm text-neutral-500">
+                    <p className="text-sm break-all text-neutral-500">
                       {seat.passengerEmail} · {seat.passengerPhone}
                     </p>
                   </div>
                   <p className="text-sm font-semibold text-neutral-900">
-                    Seat {seat.seatNumber}
+                    Seat {seatLabel(seat.seatNumber)}
                   </p>
                 </li>
               ))}
@@ -136,13 +157,30 @@ export default async function TicketPage({
               Booked on {formatBookedAt(booking.createdAt)}
             </p>
           </div>
+
+          <div className="flex flex-col items-center gap-4 border-t border-dashed border-neutral-300 bg-neutral-50 px-6 py-6 sm:flex-row sm:gap-6">
+            <TicketQr value={verifyUrl} />
+            <div className="text-center sm:text-left">
+              <p className="font-semibold text-neutral-900">
+                Scan for verification
+              </p>
+              <p className="mt-1 text-sm text-neutral-600">
+                Staff scan this code to check that your ticket is valid before
+                you board.
+              </p>
+            </div>
+          </div>
         </div>
 
         <p className="mt-4 text-sm text-neutral-500">
           Arrive 30 minutes early and present this ticket when boarding.
         </p>
 
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div className="mt-8 flex flex-wrap items-start gap-3">
+          <DownloadTicketButton
+            targetId="ticket-card"
+            fileName={`ticket-${booking.bookingReference}`}
+          />
           <Link
             href="/my-bookings"
             className="rounded-xl border border-neutral-300 px-6 py-3 text-sm font-semibold text-neutral-900 transition hover:border-yellow-400"
