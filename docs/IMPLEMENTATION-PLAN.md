@@ -105,7 +105,7 @@ Landed: the seat map, atomic holds, and the booking state machine are in. The tw
 
 **Pages:** `/booking/passengers`, `/booking/summary`, `/booking/ticket/[id]`, `/my-bookings`.
 
-1. One name, email, and phone per held seat, Zod validated
+1. One name per held seat, Zod validated. Contact name, email, and phone come from the account (collected at sign-up and editable on `/account`), so the form never asks for them again
 2. Summary: trip, seat numbers, unit fare, total
 3. `booking.confirm` in one `prisma.$transaction`: verify each seat has an unexpired hold owned by the caller, bump `BookingCounter` and build `BK-YYYYMMDD-NNNNNN`, snapshot `unitFare` and `totalAmount`, insert booking and booking seats, delete those holds. Catch `P2002` and return `CONFLICT` with `takenSeats`; catch a missing or expired hold and return `CONFLICT` with `reason: "HOLD_EXPIRED"`
 4. Ticket page follows `docs/ticket_sample.txt`: reference, status, passenger, contact, route, date and times, bus, seat, fare, booked-on timestamp
@@ -114,7 +114,7 @@ Landed: the seat map, atomic holds, and the booking state machine are in. The tw
 
 **Done when:** a 2-seat booking creates one booking plus two booking seats, the ticket shows the snapshot fare, an admin fare change leaves it alone, and My Bookings lists it.
 
-Landed: passenger details, summary, the confirm transaction, the ticket, and My Bookings are in. The navbar's "My bookings" links are back. A `P2002` from the daily `BookingCounter` upsert retries once instead of reading as a seat conflict; the seat unique constraint stays the backstop. The two-browser confirm race was not run by hand.
+Landed: passenger details, summary, the confirm transaction, the ticket, and My Bookings are in. The navbar's "My bookings" links are back. A `P2002` from the daily `BookingCounter` upsert retries once instead of reading as a seat conflict; the seat unique constraint stays the backstop. The two-browser confirm race was not run by hand. On 2026-10-26 the passenger form dropped to one name per seat: sign-up now requires a phone, `/account` edits name and phone, and the ticket reads contact details from the booking's account.
 
 ---
 
