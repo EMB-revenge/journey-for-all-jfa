@@ -134,6 +134,14 @@ The navbar's "Admin" link was removed until `/admin` exists; restore it when thi
 
 ---
 
+## Phase 7.2 - When done with MVP (Phase 1 - 8)
+
+Polish each phase/feature and add aditional features where applicable.
+
+### Ticket validation
+
+Landed: every booking gets a random `verificationCode`, the ticket QR opens `/verify/[code]`, the page is public and read-only, and `booking.checkIn` (admin) sets `checkedInAt` once. In dev the QR uses the machine's LAN address so a phone can scan it. Rules live in `docs/SPEC.md` §10.1.
+
 ## Phase 8 — Polish and deploy
 
 1. Empty states, Zod messages, and the conflict paths from spec §17
@@ -159,6 +167,6 @@ Swap freely. Merge into `dev` often.
 
 ---
 
-## Out of this plan
+## Out of this plan(possible features, but not MVP, can be done after if the team wants)
 
 Payments, cancellation, no-show, check-in, waitlists, round trips, discounts, per-seat pricing, live tracking, SMS, social login, and an end-to-end test suite.

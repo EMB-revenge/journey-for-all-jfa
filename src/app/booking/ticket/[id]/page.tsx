@@ -13,6 +13,7 @@ import {
   formatTime,
   seatLabel,
 } from "~/app/_lib/format";
+import { verifyBaseUrl } from "~/app/_lib/verify-url";
 import { api } from "~/trpc/server";
 
 export const metadata: Metadata = { title: "Your ticket | JFA Transit" };
@@ -37,14 +38,18 @@ export default async function TicketPage({
     throw error;
   }
 
-  // The QR points at this site's own public verify page.
+  // The QR points at this site's own public verify page. On localhost the
+  // helper swaps in the LAN address so a phone can actually reach it.
   const requestHeaders = await headers();
   const host =
-    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+    requestHeaders.get("x-forwarded-host") ??
+    requestHeaders.get("host") ??
+    "localhost";
   const protocol = requestHeaders.get("x-forwarded-proto") ?? "http";
-  const verifyUrl = `${protocol}://${host}/verify/${booking.bookingReference}`;
+  const verifyUrl = `${verifyBaseUrl(protocol, host)}/verify/${booking.verificationCode}`;
 
   const confirmed = booking.status === "CONFIRMED";
+  const boarded = booking.checkedInAt !== null;
 
   return (
     <>
@@ -61,12 +66,14 @@ export default async function TicketPage({
           </div>
           <span
             className={`rounded-lg px-3 py-1 text-sm font-bold ${
-              confirmed
-                ? "bg-green-100 text-green-800"
-                : "bg-red-100 text-red-700"
+              boarded
+                ? "bg-blue-100 text-blue-800"
+                : confirmed
+                  ? "bg-green-100 text-green-800"
+                  : "bg-red-100 text-red-700"
             }`}
           >
-            {booking.status}
+            {boarded ? "BOARDED" : booking.status}
           </span>
         </div>
 
@@ -156,6 +163,11 @@ export default async function TicketPage({
             <p className="mt-4 text-sm text-neutral-500">
               Booked on {formatBookedAt(booking.createdAt)}
             </p>
+            {booking.checkedInAt && (
+              <p className="mt-1 text-sm font-semibold text-blue-700">
+                Boarded at {formatBookedAt(booking.checkedInAt)}
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col items-center gap-4 border-t border-dashed border-neutral-300 bg-neutral-50 px-6 py-6 sm:flex-row sm:gap-6">

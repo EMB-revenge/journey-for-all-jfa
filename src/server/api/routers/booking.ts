@@ -1,10 +1,12 @@
 import { TRPCError } from "@trpc/server";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import type { Prisma } from "../../../../generated/prisma";
 import { isDeparted, todayInManila } from "~/lib/dates";
 import { isUniqueViolation } from "~/lib/errors";
 import { bookingIdSchema, confirmBookingSchema } from "~/lib/schemas";
 import {
+  adminProcedure,
   conflict,
   createTRPCRouter,
   protectedProcedure,
@@ -28,7 +30,9 @@ function shapeBooking(b: BookingRow) {
   return {
     id: b.id,
     bookingReference: b.bookingReference,
+    verificationCode: b.verificationCode,
     status: b.status,
+    checkedInAt: b.checkedInAt,
     createdAt: b.createdAt,
     unitFare: Number(b.unitFare),
     totalAmount: Number(b.totalAmount),
@@ -141,6 +145,7 @@ export const bookingRouter = createTRPCRouter({
                 userId,
                 scheduleId: schedule.id,
                 bookingReference: reference,
+                verificationCode: randomUUID(),
                 unitFare: schedule.route.baseFare,
                 totalAmount: schedule.route.baseFare.mul(seatIds.length),
                 seats: {
@@ -207,16 +212,16 @@ export const bookingRouter = createTRPCRouter({
       return shapeBooking(booking);
     }),
 
-    
   /**
-   * Public ticket check behind the QR code. References are sequential, so this
-   * returns no contact details or fare, and masks passenger names.
+   * Public ticket check behind the QR code. The code is random, so it cannot
+   * be walked like the sequential reference. No contact details or fare, and
+   * passenger names are masked.
    */
   verify: publicProcedure
-    .input(z.object({ reference: z.string().trim().min(1).max(40) }))
+    .input(z.object({ code: z.string().trim().min(1).max(64) }))
     .query(async ({ ctx, input }) => {
       const booking = await ctx.db.booking.findUnique({
-        where: { bookingReference: input.reference },
+        where: { verificationCode: input.code },
         include: bookingInclude,
       });
       if (!booking) throw new TRPCError({ code: "NOT_FOUND" });
@@ -225,6 +230,8 @@ export const bookingRouter = createTRPCRouter({
       return {
         bookingReference: shaped.bookingReference,
         status: shaped.status,
+        checkedInAt: booking.checkedInAt,
+        scheduleCancelled: booking.schedule.isCancelled,
         originCity: shaped.originCity,
         destCity: shaped.destCity,
         travelDate: shaped.travelDate,
@@ -242,5 +249,70 @@ export const bookingRouter = createTRPCRouter({
             .join(" "),
         })),
       };
+    }),
+
+  /**
+   * Marks a ticket boarded. The conditional update is the whole guard: two
+   * staff scanning at once cannot both write, and the loser reads the winner's
+   * timestamp instead of reporting success twice.
+   */
+  checkIn: adminProcedure
+    .input(z.object({ code: z.string().trim().min(1).max(64) }))
+    .mutation(async ({ ctx, input }) => {
+      const booking = await ctx.db.booking.findUnique({
+        where: { verificationCode: input.code },
+        select: {
+          id: true,
+          status: true,
+          checkedInAt: true,
+          schedule: { select: { travelDate: true, isCancelled: true } },
+        },
+      });
+      if (!booking) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // A second scan after midnight still reports the boarding, not "wrong day".
+      if (booking.checkedInAt) {
+        return { checkedInAt: booking.checkedInAt, alreadyCheckedIn: true };
+      }
+      if (booking.status !== "CONFIRMED") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `This booking is ${booking.status.toLowerCase().replace("_", " ")}.`,
+        });
+      }
+      if (booking.schedule.isCancelled) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "This trip was cancelled.",
+        });
+      }
+      if (
+        booking.schedule.travelDate.toISOString().slice(0, 10) !==
+        todayInManila()
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "This ticket is not for today.",
+        });
+      }
+
+      const checkedInAt = new Date();
+      const { count } = await ctx.db.booking.updateMany({
+        where: { id: booking.id, checkedInAt: null, status: "CONFIRMED" },
+        data: { checkedInAt },
+      });
+      if (count === 1) return { checkedInAt, alreadyCheckedIn: false };
+
+      const current = await ctx.db.booking.findUnique({
+        where: { id: booking.id },
+        select: { checkedInAt: true },
+      });
+      if (!current?.checkedInAt) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This booking changed. Scan it again.",
+        });
+      }
+      return { checkedInAt: current.checkedInAt, alreadyCheckedIn: true };
     }),
 });
