@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { HoldCountdown } from "~/app/_components/booking/hold-countdown";
 import { formatDuration, formatLongDate, formatTime } from "~/app/_lib/format";
+import { useAuth } from "~/context/AuthContext";
 import { useBookingFlow } from "~/context/BookingFlowProvider";
 import { searchHref, seatMapHref, type SeatMapParams } from "~/lib/seat-map";
 import { api } from "~/trpc/react";
@@ -17,6 +18,7 @@ import { api } from "~/trpc/react";
 export function SummaryView({ params }: { params: SeatMapParams }) {
   const router = useRouter();
   const utils = api.useUtils();
+  const { session } = useAuth();
   const { state, dispatch } = useBookingFlow();
   const [mounted, setMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,7 +153,7 @@ export function SummaryView({ params }: { params: SeatMapParams }) {
           Passenger details are missing
         </p>
         <p className="mt-2 text-neutral-600">
-          Fill in one name, email, and phone per held seat before confirming.
+          Add a name for every held seat before confirming.
         </p>
         <Link
           href={seatMapHref(params, "/booking/passengers")}
@@ -228,20 +230,19 @@ export function SummaryView({ params }: { params: SeatMapParams }) {
               key={passenger.seatId}
               className="flex flex-wrap items-baseline justify-between gap-2 py-3"
             >
-              <div>
-                <p className="font-semibold text-neutral-900">
-                  {passenger.name}
-                </p>
-                <p className="text-sm text-neutral-500">
-                  {passenger.email} · {passenger.phone}
-                </p>
-              </div>
+              <p className="font-semibold text-neutral-900">{passenger.name}</p>
               <p className="text-sm font-semibold text-neutral-900">
                 Seat {seatNumbers.get(passenger.seatId) ?? "—"}
               </p>
             </li>
           ))}
         </ul>
+        <p className="mt-4 border-t border-neutral-200 pt-4 text-sm text-neutral-500">
+          Contact:{" "}
+          {[session?.user.name, session?.user.email, session?.user.phone]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
       </div>
 
       <div className="rounded-2xl border border-neutral-200 bg-white p-6">

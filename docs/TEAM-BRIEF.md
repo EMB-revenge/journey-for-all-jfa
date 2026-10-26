@@ -10,7 +10,7 @@
 
 A one-way intercity bus booking site.
 
-Passenger: register → search (from, to, date, 1–6 people) → pick a trip → pick seats → 5-minute hold with countdown → one name, email, and phone per seat → confirm → digital ticket → My Bookings.
+Passenger: register (name, email, phone, password) → search (from, to, date, 1–6 people) → pick a trip → pick seats → 5-minute hold with countdown → one name per seat → confirm → digital ticket → My Bookings. Contact details come from the account, so the booking form never asks for a phone.
 
 Admin: sidebar (Cities | Buses | Routes | Schedules | Bookings), no dashboard home; read all bookings.
 

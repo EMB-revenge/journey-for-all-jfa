@@ -17,10 +17,23 @@ export const passwordSchema = z
   .string()
   .min(8, "Password must be at least 8 characters");
 
+const personName = z
+  .string()
+  .trim()
+  .min(2, "Name must be at least 2 characters");
+
+export const phoneSchema = z
+  .string()
+  .trim()
+  .min(7, "Enter a valid phone number")
+  .max(20, "Enter a valid phone number")
+  .regex(/^[0-9+\-\s()]+$/, "Phone can only contain digits, +, -, and spaces");
+
 export const registerSchema = z
   .object({
-    name: z.string().trim().min(2, "Name must be at least 2 characters"),
+    name: personName,
     email: emailSchema,
+    phone: phoneSchema,
     password: passwordSchema,
     confirmPassword: z.string(),
   })
@@ -28,6 +41,12 @@ export const registerSchema = z
     message: "Passwords do not match",
     path: ["confirmPassword"],
   });
+
+/** Profile edits on `/account`. Email is not editable here. */
+export const profileSchema = z.object({
+  name: personName,
+  phone: phoneSchema,
+});
 
 export const loginSchema = z.object({
   email: emailSchema,
@@ -82,17 +101,7 @@ export const releaseHoldsSchema = z.object({
 
 export const passengerSchema = z.object({
   seatId: z.string().min(1),
-  name: z.string().trim().min(2, "Name must be at least 2 characters"),
-  email: emailSchema,
-  phone: z
-    .string()
-    .trim()
-    .min(7, "Enter a valid phone number")
-    .max(20, "Enter a valid phone number")
-    .regex(
-      /^[0-9+\-\s()]+$/,
-      "Phone can only contain digits, +, -, and spaces",
-    ),
+  name: personName,
 });
 
 export const confirmBookingSchema = z.object({

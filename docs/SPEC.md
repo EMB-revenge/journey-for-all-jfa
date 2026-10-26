@@ -52,7 +52,7 @@ A web app for booking one-way intercity(In Panay Island for now) bus trips: sear
 
 | Role | How created | What they do |
 | --- | --- | --- |
-| Passenger | Self sign-up, `role` defaults to `PASSENGER` | Search, book, view own tickets, change password |
+| Passenger | Self sign-up, `role` defaults to `PASSENGER` | Search, book, view own tickets, edit account details, change password |
 | Admin | Seeded from env (Fletcher, Joe, Amiel), `role = ADMIN` | Same as passenger plus the admin sidebar |
 
 One app. `user.role` gates admin pages (`src/middleware.ts`) and admin procedures (`adminProcedure`).
@@ -167,7 +167,7 @@ bus_ticketing/
 
 Scaffolded 2026-09-30 with `create-t3-app` 7.40.0: tRPC v11, Prisma 6 with client output in `generated/prisma`, Tailwind v4, ESLint, Prettier, and Better Auth 1.3 wired with the Prisma adapter and email/password enabled.
 
-Landed since: the domain schema with its first migration and seed (bus types, cities, three admins), the full account story (`/register`, `/login`, `/change-password`, `AuthProvider`, the `/admin` route guard), and the tRPC foundation (`protectedProcedure`, `adminProcedure`, `city.list`, `busType.list`, `admin.booking.list`). `/search` with `schedule.search` came in from an early branch and was finished in Phase 4 (route + date + passengers, departed and cancelled excluded, `availableSeats` filter, Asia/Manila date guard). `/booking/seat-map` followed with `schedule.seats` and atomic one-batch holds (`hold.create`, `hold.release`); the seat selection survives a login detour through `BookingFlowProvider`, occupied seats read as both booked and actively held, and an expired hold frees its seat. The seed now also carries demo buses, routes, and trips for the next three days, so a fresh database has searchable trips.
+Landed since: the domain schema with its first migration and seed (bus types, cities, three admins), the full account story (`/register`, `/login`, `/account`, `/change-password`, `AuthProvider`, the `/admin` route guard), and the tRPC foundation (`protectedProcedure`, `adminProcedure`, `city.list`, `busType.list`, `admin.booking.list`). `/search` with `schedule.search` came in from an early branch and was finished in Phase 4 (route + date + passengers, departed and cancelled excluded, `availableSeats` filter, Asia/Manila date guard). `/booking/seat-map` followed with `schedule.seats` and atomic one-batch holds (`hold.create`, `hold.release`); the seat selection survives a login detour through `BookingFlowProvider`, occupied seats read as both booked and actively held, and an expired hold frees its seat. The seed now also carries demo buses, routes, and trips for the next three days, so a fresh database has searchable trips.
 
 The scaffold leftovers are gone: the `Post` model and router, `_components/post.tsx`, `socialProviders.github`, the two `BETTER_AUTH_GITHUB_*` vars, and `@auth/prisma-adapter`.
 
@@ -182,6 +182,8 @@ Prisma models use camelCase fields and map to snake_case tables, so the SQL stay
 | Model | Table | Fields |
 | --- | --- | --- |
 | User | `user` | `id`, `name`, `email` unique, `emailVerified`, `image?`, `role`, `isActive` (default true), `phone?`, timestamps |
+
+`phone` is optional in the database because seeded admins and accounts made before signup asked for it have none. The register form requires it.
 | Session | `session` | `id`, `token` unique, `userId`, `expiresAt`, `ipAddress?`, `userAgent?`, timestamps |
 | Account | `account` | `id`, `accountId`, `providerId`, `userId`, `password?`, token fields, timestamps. The password hash lives here, never on `user` |
 | Verification | `verification` | `id`, `identifier`, `value`, `expiresAt`, timestamps |
@@ -199,7 +201,9 @@ Sign-up inserts `role = PASSENGER` by default. Better Auth generates these four 
 | Route | `routes` | `id`, `originCityId`, `destCityId`, `durationMinutes`, `baseFare`, `isActive` | unique `(originCityId, destCityId)` |
 | Schedule | `schedules` | `id`, `busId`, `routeId`, `travelDate`, `departureTime`, `arrivalTime`, `isCancelled` | unique `(busId, travelDate, departureTime)` |
 | Booking | `bookings` | `id`, `userId`, `scheduleId`, `bookingReference`, `unitFare`, `totalAmount`, `status`, timestamps | `bookingReference` unique |
-| BookingSeat | `booking_seats` | `id`, `bookingId`, `scheduleId`, `seatId`, `passengerName`, `passengerEmail`, `passengerPhone` | unique `(scheduleId, seatId)` |
+| BookingSeat | `booking_seats` | `id`, `bookingId`, `scheduleId`, `seatId`, `passengerName`, `passengerEmail?`, `passengerPhone?` | unique `(scheduleId, seatId)` |
+
+`passengerEmail` and `passengerPhone` are legacy: bookings now take contact details from the account, so the confirm transaction writes only the passenger name.
 | SeatHold | `seat_holds` | `id`, `scheduleId`, `seatId`, `userId`, `expiresAt` | unique `(scheduleId, seatId)` |
 | BookingCounter | `booking_counters` | `date` (PK), `lastNumber` | one row per day |
 
@@ -267,7 +271,7 @@ Search (origin, dest, date >= today, passengers 1-6)
      → Results (enough free seats, route base fare, bus type)
      → Seat map (pick exactly N locally)
      → Continue → sign in if needed → hold.create (batch, 5 min) → countdown
-     → Passenger form per seat → summary
+     → Passenger name per seat (contact comes from the account) → summary
      → Confirm → booking.confirm transaction → digital ticket → My Bookings
 ```
 
@@ -297,9 +301,10 @@ Better Auth with email and password. No social login.
 
 | Action | Call |
 | --- | --- |
-| Register | `authClient.signUp.email({ name, email, password })` |
+| Register | `authClient.signUp.email({ name, email, phone, password })` |
 | Log in | `authClient.signIn.email({ email, password })` |
 | Log out | `authClient.signOut()` |
+| Update name or phone | `authClient.updateUser({ name, phone })` from `/account` |
 | Change password | `authClient.changePassword({ currentPassword, newPassword, revokeOtherSessions: true })` |
 | Read session (server) | `getSession()` from `src/server/better-auth/server.ts`, or `ctx.session` inside a procedure |
 | Read session (client) | `authClient.useSession()` |
@@ -307,6 +312,7 @@ Better Auth with email and password. No social login.
 Configuration notes:
 
 - `emailAndPassword: { enabled: true, minPasswordLength: 8 }`
+- `phone` is an additional user field with `input` enabled, so sign-up and `updateUser` can write it. `role` and `isActive` stay `input: false`
 - `nextCookies()` goes last in the plugin list if any auth call runs from a server action
 - Session is an httpOnly cookie. Nothing auth-related goes in localStorage
 - Password hashes live in `account` and never leave the server
@@ -334,7 +340,7 @@ Auth lives in Better Auth's own routes. Everything below is a procedure. All inp
 | `schedule.seats` | public | `{ scheduleId }` | seats with two-state `status` (`AVAILABLE` / `OCCUPIED`, held seats read as occupied) | `NOT_FOUND` |
 | `hold.create` | protected | `{ scheduleId, seatIds: 1..6 }` | `{ expiresAt }` | `CONFLICT` + `takenSeats` |
 | `hold.release` | protected | `{ scheduleId, seatIds? }` | `{ released }` | |
-| `booking.confirm` | protected | `{ scheduleId, passengers: [{ seatId, name, email, phone }] }` | booking, seats, ticket payload | `CONFLICT` + `takenSeats` or `reason: "HOLD_EXPIRED"`, `PRECONDITION_FAILED` for a departed or cancelled schedule |
+| `booking.confirm` | protected | `{ scheduleId, passengers: [{ seatId, name }] }` | booking, seats, ticket payload with the account as contact | `CONFLICT` + `takenSeats` or `reason: "HOLD_EXPIRED"`, `PRECONDITION_FAILED` for a departed or cancelled schedule |
 | `booking.list` | protected | none | own bookings, newest first | |
 | `booking.get` | protected | `{ id }` | own booking with seats | `NOT_FOUND` |
 | `booking.verify` | public | `{ code }` | ticket check: status, route, date, masked passengers, `checkedInAt` | `NOT_FOUND` |
@@ -359,7 +365,7 @@ Creating a bus creates its seats in the same transaction. Deleting is limited to
 
 ## 16. Pages and state
 
-**Passenger:** `/` search, `/login`, `/register`, `/change-password`, `/booking/seat-map`, `/booking/passengers`, `/booking/summary`, `/booking/ticket/[id]`, `/my-bookings`
+**Passenger:** `/` search, `/login`, `/register`, `/account`, `/change-password`, `/booking/seat-map`, `/booking/passengers`, `/booking/summary`, `/booking/ticket/[id]`, `/my-bookings`
 
 **Public:** `/verify/[code]` (read-only ticket check behind the QR)
 
@@ -367,8 +373,8 @@ Creating a bus creates its seats in the same transaction. Deleting is limited to
 
 - `src/app/layout.tsx` holds the shared shell, `AuthProvider`, and `BookingFlowProvider`. Admin links render only when `session.user.role === "ADMIN"`
 - Pages that read the session or run mutations are client components. Search and results can be server components that call procedures through the server caller
-- Auth gate: the navbar carries one neutral `Sign in` action for signed-out visitors, since yellow belongs to the booking path (Search trips, Select seat, Continue, Confirm). Signed-in visitors get an account menu with My bookings, Change password, and Sign out. The write gate itself is at Continue on `/booking/seat-map`
-- Booking flow state lives in `BookingFlowProvider` + `bookingFlowReducer`: selected schedule, passenger count, selected seats, hold expiry, per-seat passenger forms. It survives the route changes between seat map, passengers, and summary
+- Auth gate: the navbar carries one neutral `Sign in` action for signed-out visitors, since yellow belongs to the booking path (Search trips, Select seat, Continue, Confirm). Signed-in visitors get an account menu with Account, My bookings, and Sign out. Change password lives on `/account`, beside the name and phone fields. The write gate itself is at Continue on `/booking/seat-map`
+- Booking flow state lives in `BookingFlowProvider` + `bookingFlowReducer`: selected schedule, passenger count, selected seats, hold expiry, per-seat passenger names. It survives the route changes between seat map, passengers, and summary
 - The hold countdown is a client timer seeded from `expiresAt`
 - Styling is Tailwind, functional. The seat map is a numbered grid with two states: available vs occupied (held seats render as occupied)
 
@@ -453,7 +459,7 @@ Branches: `main` is production, `dev` is integration, features branch off `dev`.
 5. Search and book today and future only, no departed trips
 6. Availability mismatch returns a conflict; the seat map refreshes. Never a silent partial booking
 7. Fare snapshot on the booking (`unitFare` + `totalAmount`), always from the route's `baseFare`
-8. Multi-seat with details per seat (one name, email, phone per seat), maximum 6
+8. Multi-seat with a name per seat, maximum 6. Contact details come from the booking's account, so booking never asks for an email or phone
 9. One-way only
 10. No cancellation in the MVP
 11. Auto-confirm, no payment step

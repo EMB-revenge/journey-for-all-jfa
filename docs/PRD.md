@@ -10,7 +10,7 @@ This document covers what the product is and why. Tables, procedures, and stack 
 
 ## 1. Overview
 
-A web app for booking one-way intercity(In Panay Island for now) bus trips. A passenger searches by route and date, picks a trip, selects seats (1–6), enters passenger details per seat, and receives a digital ticket. Administrators manage the bus fleet, routes, schedules, and cities, and can view all bookings.
+A web app for booking one-way intercity(In Panay Island for now) bus trips. A passenger searches by route and date, picks a trip, selects seats (1–6), names each passenger, and receives a digital ticket. Contact details come from the account, set at sign-up. Administrators manage the bus fleet, routes, schedules, and cities, and can view all bookings.
 
 The system demonstrates a working booking and ticketing product: authentication, relational data, transactional seat allocation with temporary holds, and admin CRUD.
 
@@ -34,12 +34,12 @@ The system demonstrates a working booking and ticketing product: authentication,
 
 ### In the MVP
 
-- Passenger registration, login, logout, change password
+- Passenger registration with name, email, phone, and password; account page to edit name and phone
 - Trip search by origin city, destination city, travel date, and passenger count (1–6)
 - Results listing with departure and arrival times, bus type, fare, and seats remaining
 - Seat selection with **available** and **occupied** states only (no held-by-other/held-by-me distinction in UI)
 - Temporary seat holds (5 min) with visible countdown; holds auto-expire and free seats
-- Passenger details per seat (name, email, phone), booking summary, and confirmation
+- Passenger name per seat; contact details come from the account. Booking summary and confirmation
 - Digital ticket with booking reference
 - My Bookings: past and upcoming
 - Admin sidebar navigation: Cities | Buses | Routes | Schedules | Bookings (no separate dashboard home)
@@ -54,7 +54,7 @@ Payments, cancellation, no-show and check-in, waitlists, overbooking, round trip
 
 ### 5.1 Registration and Login
 
-Inputs: full name, email, password. The system validates input, rejects duplicate emails, hashes the password, and creates the account with the passenger role. Login with valid credentials lands the passenger on search. Invalid credentials show an error and reveal nothing about whether the email exists. Any signed-in user can change their password with their current one. An account is not needed to browse: search, results, and the seat map are open, and sign-in is required at the hold step, where the system first writes on the passenger's behalf.
+Inputs: full name, email, phone, password. The system validates input, rejects duplicate emails, hashes the password, and creates the account with the passenger role. Login with valid credentials lands the passenger on search. Invalid credentials show an error and reveal nothing about whether the email exists. Any signed-in user can edit their name and phone on `/account` and change their password with their current one. An account is not needed to browse: search, results, and the seat map are open, and sign-in is required at the hold step, where the system first writes on the passenger's behalf.
 
 ### 5.2 Search
 
@@ -70,7 +70,7 @@ Continue creates a 5-minute hold on the selected seats and starts a visible coun
 
 ### 5.5 Booking and Ticket
 
-Inputs: one name, email, and phone per selected seat. The summary shows the trip, seats, unit fare, and total before the passenger commits. Confirming issues a unique booking reference, stores the fare as it was at that moment, and displays the digital ticket. Later fare changes never alter an issued ticket.
+Inputs: one name per selected seat, prefilled from the account for the first one. The contact name, email, and phone on the booking are the account's, so nothing is typed twice. The summary shows the trip, seats, unit fare, and total before the passenger commits. Confirming issues a unique booking reference, stores the fare as it was at that moment, and displays the digital ticket. Later fare changes never alter an issued ticket.
 
 ### 5.6 My Bookings
 
@@ -102,7 +102,7 @@ Admins see all bookings with passenger and trip details and can filter by date o
 
 ## 7. Flows
 
-**Passenger:** search → results → select trip → select seats → sign in → hold with countdown → passenger details → summary → confirm → ticket → My Bookings.
+**Passenger:** search → results → select trip → select seats → sign in → hold with countdown → passenger names → summary → confirm → ticket → My Bookings.
 
 **Admin:** log in → sidebar → manage cities, buses, routes, schedules → review bookings.
 
