@@ -1,133 +1,147 @@
+import Image, { type StaticImageData } from "next/image";
 import { formatDuration } from "~/app/_lib/format";
+
+import bakhawanBoardwalk from "~/assets/locations/bakhawan-boardwalk.jpg";
+import moloChurch from "~/assets/locations/molo-church.jpg";
+import passiStreet from "~/assets/locations/passi-street.jpg";
+import roxasBandstand from "~/assets/locations/roxas-bandstand.jpg";
+import sanJoseCoast from "~/assets/locations/san-jose-coast.jpg";
 
 /**
  * Static board content for the five seeded Panay cities. Durations and fares
  * mirror the one-way Iloilo figures in prisma/seed.ts ROUTES; the cities'
- * facts are real, so a change here must be checked against both.
+ * facts are real, so a change here must be checked against both. Photos are
+ * CC BY-SA files from Wikimedia Commons, credited under the grid.
  */
-const HUB = {
-  city: "Iloilo City",
-  province: "Iloilo",
-  fact: "The hub. Direct routes to Roxas City, Kalibo, San Jose de Buenavista, and Passi City. UNESCO Creative City of Gastronomy.",
+type City = {
+  name: string;
+  province: string;
+  isHub?: boolean;
+  /** One-way figures from Iloilo City, per the seed routes. */
+  minutesFromHub?: number;
+  fareFromHub?: number;
+  fact: string;
+  photo: StaticImageData;
+  alt: string;
 };
 
-const DESTINATIONS = [
+const CITIES: City[] = [
   {
-    city: "Passi City",
+    name: "Iloilo City",
+    province: "Iloilo",
+    isHub: true,
+    fact: "The hub. Direct routes to Roxas City, Kalibo, San Jose de Buenavista, and Passi City. UNESCO Creative City of Gastronomy.",
+    photo: moloChurch,
+    alt: "Molo Church in Iloilo City, a white stone church with two red-spired towers under a blue sky",
+  },
+  {
+    name: "Passi City",
     province: "Iloilo",
     minutesFromHub: 90,
     fareFromHub: 120,
     fact: "The Sweet City in the Heart of Panay, known for its pineapple and sugar fields.",
+    photo: passiStreet,
+    alt: "Passi City street with yellow tricycles and the town's low buildings on a sunny day",
   },
   {
-    city: "Roxas City",
+    name: "Roxas City",
     province: "Capiz",
     minutesFromHub: 150,
     fareFromHub: 260,
     fact: "The seafood capital of the Philippines, beside the Panay River.",
+    photo: roxasBandstand,
+    alt: "The Roxas City plaza bandstand with the painted Roxas city sign behind motorcycles",
   },
   {
-    city: "San Jose de Buenavista",
+    name: "San Jose de Buenavista",
     province: "Antique",
     minutesFromHub: 240,
     fareFromHub: 350,
     fact: "Capital of Antique, on Panay's west coast facing the Sulu Sea.",
+    photo: sanJoseCoast,
+    alt: "Fishing boats moored on the coast at San Jose de Buenavista with mountains behind",
   },
   {
-    city: "Kalibo",
+    name: "Kalibo",
     province: "Aklan",
     minutesFromHub: 240,
     fareFromHub: 380,
     fact: "Gateway to Boracay through the Caticlan jetty port, and home of the Ati-Atihan festival.",
+    photo: bakhawanBoardwalk,
+    alt: "Bamboo boardwalk through the Bakhawan Eco-park mangroves in Kalibo",
   },
-] as const;
+];
 
 const fare = (peso: number) =>
-  peso.toLocaleString("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });
-
-function BoardRow({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`grid gap-x-6 gap-y-2 border-t border-white/10 py-6 sm:grid-cols-[auto_1fr_auto] sm:items-center sm:gap-x-10 ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
+  peso.toLocaleString("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    minimumFractionDigits: 0,
+  });
 
 export function Locations() {
   return (
     <section id="locations">
       <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
-        {/* The board sits as a rounded panel on the paper background instead
-            of bleeding edge to edge, so no hard black-to-white seam. */}
-        <div className="rounded-3xl bg-charcoal text-white shadow-lg">
-          <div className="px-6 py-12 sm:px-12">
-            <p className="mb-3 text-xs font-semibold tracking-[0.25em] text-yellow-400 uppercase sm:text-sm">
-              Locations
-            </p>
-            <h2 className="max-w-2xl text-3xl font-bold tracking-tight sm:text-5xl">
-              Where JFA Transit runs
-            </h2>
-            <p className="mt-4 max-w-xl text-base text-white/70 sm:text-lg">
-              Five cities across Panay Island. One hub, four destinations. Times
-              and fares below are the one-way figures from Iloilo City.
-            </p>
+        <p className="mb-3 text-xs font-semibold tracking-[0.25em] text-ochre uppercase sm:text-sm">
+          Locations
+        </p>
+        <h2 className="max-w-2xl text-3xl font-bold tracking-tight text-ink sm:text-5xl">
+          Where JFA Transit runs
+        </h2>
+        <p className="mt-4 max-w-xl text-base text-stone-600 sm:text-lg">
+          Five cities across Panay Island. One hub, four destinations. Times
+          and fares below are the one-way figures from Iloilo City.
+        </p>
 
-            <div className="mt-12 border-b border-white/10">
-              {/* Hub row: the yellow name marks where every route starts. */}
-              <BoardRow>
-                <span className="rounded-md bg-yellow-400 px-2 py-1 text-xs font-bold text-black">
-                  HUB
-                </span>
-                <div>
-                  <h3 className="text-xl font-semibold text-yellow-400 sm:text-2xl">
-                    {HUB.city}
-                  </h3>
-                  <p className="mt-1 max-w-xl text-sm text-white/60">
-                    {HUB.fact}
-                  </p>
-                </div>
-                <p className="text-sm text-white/50">
-                  <span className="font-semibold text-white">4 routes</span>{" "}
-                  running from the hub
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {CITIES.map(({ name, province, isHub, minutesFromHub, fareFromHub, fact, photo, alt }) => (
+            // Hub City sits on top spanned so the two columns read as one board.
+            <article
+              key={name}
+              className={`overflow-hidden rounded-3xl border border-stone-200 bg-white ${
+                isHub ? "sm:col-span-2" : ""
+              }`}
+            >
+              <Image
+                src={photo}
+                alt={alt}
+                className="h-52 w-full object-cover sm:h-56"
+              />
+              <div className="p-6">
+                <h3 className="text-xl font-semibold text-ink sm:text-2xl">
+                  {name}{" "}
+                  <span className="text-sm font-normal text-stone-400 sm:text-base">
+                    , {province}
+                  </span>
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-stone-600 sm:text-base">
+                  {fact}
                 </p>
-              </BoardRow>
-
-              {DESTINATIONS.map(
-                ({ city, province, minutesFromHub, fareFromHub, fact }, i) => (
-                  <BoardRow key={city}>
-                    <span className="font-mono text-xs text-white/40">
-                      {String(i + 1).padStart(2, "0")}
+                <p className="mt-5 flex items-baseline justify-between border-t border-stone-100 pt-4 text-sm">
+                  <span className="text-stone-500">
+                    {isHub ? "All routes start here" : "From Iloilo City"}
+                  </span>
+                  {isHub ? (
+                    <span className="font-semibold text-ink">4 direct routes</span>
+                  ) : (
+                    <span className="font-semibold tabular-nums text-ink">
+                      {formatDuration(minutesFromHub ?? 0)}
+                      <span className="font-normal text-stone-500">
+                        {" "}
+                        · from {fare(fareFromHub ?? 0)}
+                      </span>
                     </span>
-                    <div>
-                      <h3 className="text-xl font-semibold sm:text-2xl">
-                        {city} <span className="text-white/50">, {province}</span>
-                      </h3>
-                      <p className="mt-1 max-w-xl text-sm text-white/60">
-                        {fact}
-                      </p>
-                    </div>
-                    <div className="text-right sm:min-w-24">
-                      <p className="font-semibold tabular-nums">
-                        {formatDuration(minutesFromHub)}
-                      </p>
-                      <p className="mt-0.5 text-sm tabular-nums text-white/60">
-                        from {fare(fareFromHub)}
-                      </p>
-                    </div>
-                  </BoardRow>
-                ),
-              )}
-            </div>
-          </div>
+                  )}
+                </p>
+              </div>
+            </article>
+          ))}
         </div>
+
+        <p className="mt-4 text-xs text-stone-400">
+          Photos: Wikimedia Commons, CC BY-SA 3.0/4.0.
+        </p>
       </div>
     </section>
   );
