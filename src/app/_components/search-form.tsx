@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { CustomSelect } from "~/app/_components/custom-select";
 import { api } from "~/trpc/react";
 import { fieldErrors, searchTripsSchema } from "~/lib/schemas";
 import { todayInManila } from "~/lib/dates";
@@ -13,6 +14,15 @@ type SearchFormProps = {
   initialDate?: string;
   initialPassengers?: string;
 };
+
+/** Every field gets this slot, so an error message never shifts the layout. */
+function FieldMessage({ children }: { children?: string }) {
+  return (
+    <span className="mt-1 block min-h-5 text-sm text-red-600">
+      {children ?? ""}
+    </span>
+  );
+}
 
 export function SearchForm({
   initialFrom = "",
@@ -33,6 +43,19 @@ export function SearchForm({
   // show stale fields; give the form a key if that needs to sync with the URL.
 
   const today = todayInManila();
+
+  const cityOptions = (cities ?? []).map((city) => ({
+    value: city.id,
+    label: city.name,
+  }));
+  const fromOptions = cityOptions.map((o) => ({
+    ...o,
+    disabled: o.value === to,
+  }));
+  const toOptions = cityOptions.map((o) => ({
+    ...o,
+    disabled: o.value === from,
+  }));
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -69,59 +92,37 @@ export function SearchForm({
       className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-2xl sm:p-8"
       noValidate
     >
-      <div className="grid gap-4 md:grid-cols-2 md:items-end lg:grid-cols-[1fr_1fr_0.7fr_0.5fr_auto]">
+      <div className="grid gap-x-4 gap-y-1 md:grid-cols-2 lg:grid-cols-[1fr_1fr_0.7fr_0.5fr_auto]">
         <label className="block min-w-0">
-          <span className="mb-2 block text-sm text-neutral-600">From</span>
-          <select
-            className={fieldClass}
+          <span className="mb-2 block text-sm text-stone-600">From</span>
+          <CustomSelect
+            options={isLoading ? [] : fromOptions}
             value={from}
-            onChange={(e) => setFrom(e.target.value)}
+            onChange={(v) => setFrom(v)}
+            placeholder={
+              isLoading ? "Loading cities..." : "Select departure city"
+            }
             disabled={isLoading}
-          >
-            <option value="" disabled>
-              {isLoading ? "Loading cities..." : "Select departure city"}
-            </option>
-            {cities?.map((city) => (
-              <option key={city.id} value={city.id} disabled={city.id === to}>
-                {city.name}
-              </option>
-            ))}
-          </select>
-          {errors.originCityId && (
-            <span className="mt-1 block text-sm text-red-600">
-              {errors.originCityId}
-            </span>
-          )}
+          />
+          <FieldMessage>{errors.originCityId}</FieldMessage>
         </label>
 
         <label className="block min-w-0">
-          <span className="mb-2 block text-sm text-neutral-600">To</span>
-          <select
-            className={fieldClass}
+          <span className="mb-2 block text-sm text-stone-600">To</span>
+          <CustomSelect
+            options={isLoading ? [] : toOptions}
             value={to}
-            onChange={(e) => setTo(e.target.value)}
+            onChange={(v) => setTo(v)}
+            placeholder={
+              isLoading ? "Loading cities..." : "Select destination city"
+            }
             disabled={isLoading}
-          >
-            <option value="" disabled>
-              {isLoading ? "Loading cities..." : "Select destination city"}
-            </option>
-            {cities?.map((city) => (
-              <option key={city.id} value={city.id} disabled={city.id === from}>
-                {city.name}
-              </option>
-            ))}
-          </select>
-          {errors.destCityId && (
-            <span className="mt-1 block text-sm text-red-600">
-              {errors.destCityId}
-            </span>
-          )}
+          />
+          <FieldMessage>{errors.destCityId}</FieldMessage>
         </label>
 
         <label className="block min-w-0">
-          <span className="mb-2 block text-sm text-neutral-600">
-            Travel date
-          </span>
+          <span className="mb-2 block text-sm text-stone-600">Travel date</span>
           <input
             type="date"
             className={fieldClass}
@@ -129,45 +130,45 @@ export function SearchForm({
             min={today}
             onChange={(e) => setDate(e.target.value)}
           />
-          {errors.date && (
-            <span className="mt-1 block text-sm text-red-600">
-              {errors.date}
-            </span>
-          )}
+          <FieldMessage>{errors.date}</FieldMessage>
         </label>
 
         <label className="block min-w-0">
-          <span className="mb-2 block text-sm text-neutral-600">
-            Passengers
-          </span>
-          <select
-            className={fieldClass}
+          <span className="mb-2 block text-sm text-stone-600">Passengers</span>
+          <CustomSelect
+            options={[1, 2, 3, 4, 5, 6].map((n) => ({
+              value: String(n),
+              label: String(n),
+            }))}
             value={passengers}
-            onChange={(e) => setPassengers(e.target.value)}
-          >
-            {[1, 2, 3, 4, 5, 6].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-          {errors.passengers && (
-            <span className="mt-1 block text-sm text-red-600">
-              {errors.passengers}
-            </span>
-          )}
+            onChange={(v) => setPassengers(v)}
+            placeholder="1"
+          />
+          <FieldMessage>{errors.passengers}</FieldMessage>
         </label>
 
-        <button
-          type="submit"
-          disabled={isPending}
-          className="flex items-center justify-center gap-2 rounded-xl bg-yellow-400 px-8 py-3 text-base font-semibold text-black transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60 sm:py-4 md:col-span-2 lg:col-span-1"
-        >
-          {isPending && (
-            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black" />
-          )}
-          {isPending ? "Searching..." : "Search trips"}
-        </button>
+        {/* mt-7 mirrors the 20px label plus its 8px bottom margin, so the
+            button tops out at the same line as the other inputs. */}
+        <div className="mt-7 md:col-span-2 lg:col-span-1">
+          <button
+            type="submit"
+            disabled={isPending}
+            className="group flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-yellow-400 px-8 py-3 text-base font-semibold text-black transition hover:-translate-y-0.5 hover:bg-yellow-300 hover:shadow-lg lg:w-auto disabled:cursor-not-allowed disabled:translate-y-0 disabled:bg-stone-200 disabled:text-stone-500 disabled:opacity-60 disabled:shadow-none sm:py-4"
+          >
+            {isPending && (
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black" />
+            )}
+            {isPending ? "Searching..." : "Search trips"}
+            {/* Direction cue: appears only on hover. */}
+            <span
+              aria-hidden
+              className="transition-transform duration-150 [display:none] group-hover:inline group-hover:translate-x-0.5"
+            >
+              →
+            </span>
+          </button>
+          <div className="h-6" />
+        </div>
       </div>
     </form>
   );
