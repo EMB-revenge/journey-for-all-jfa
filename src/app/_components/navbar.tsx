@@ -24,7 +24,7 @@ export function Navbar() {
   }
 
   return (
-    <header className="bg-neutral-950">
+    <header className="bg-charcoal">
       <nav className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
         <Link href="/" className="flex shrink-0 items-center gap-3">
           <Image

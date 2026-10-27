@@ -48,7 +48,7 @@ export function DownloadTicketButton({
         type="button"
         onClick={handleDownload}
         disabled={busy}
-        className="rounded-xl bg-neutral-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="rounded-xl bg-charcoal px-6 py-3 text-sm font-semibold text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {busy ? "Preparing image..." : "Download ticket"}
       </button>

@@ -65,8 +65,8 @@ export const changePasswordSchema = z
   });
 
 export const searchTripsSchema = z.object({
-  originCityId: z.string().min(1),
-  destCityId: z.string().min(1),
+  originCityId: z.string().min(1, "Pick a departure city"),
+  destCityId: z.string().min(1, "Pick a destination city"),
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a travel date")

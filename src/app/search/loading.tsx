@@ -1,7 +1,7 @@
 export default function SearchLoading() {
   return (
     <>
-      <div className="bg-neutral-900">
+      <div className="bg-charcoal">
         <div className="mx-auto max-w-7xl px-6 py-10">
           <div className="animate-pulse space-y-2">
             <div className="h-3 w-24 rounded bg-white/20" />
