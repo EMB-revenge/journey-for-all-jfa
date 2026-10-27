@@ -5,6 +5,7 @@ import { Geist } from "next/font/google";
 
 import { AuthProvider } from "~/context/AuthContext";
 import { BookingFlowProvider } from "~/context/BookingFlowProvider";
+import { Footer } from "~/app/_components/footer";
 import { TRPCReactProvider } from "~/trpc/react";
 
 export const metadata: Metadata = {
@@ -30,7 +31,7 @@ export default function RootLayout({
       <body className="min-h-screen font-sans antialiased">
         <TRPCReactProvider>
           <AuthProvider>
-            <BookingFlowProvider>{children}</BookingFlowProvider>
+            <BookingFlowProvider>{children}<Footer /></BookingFlowProvider>
           </AuthProvider>
         </TRPCReactProvider>
       </body>
