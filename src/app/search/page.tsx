@@ -40,7 +40,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     <>
       <Navbar />
       <main>
-        <section className="bg-neutral-900">
+        <section className="bg-charcoal">
           <div className="mx-auto max-w-7xl px-6 py-10">
             <div>
               <p className="text-sm font-semibold tracking-[0.25em] text-yellow-400 uppercase">

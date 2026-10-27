@@ -63,60 +63,70 @@ function BoardRow({
 
 export function Locations() {
   return (
-    <section id="locations" className="bg-neutral-950 text-white">
+    <section id="locations">
       <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
-        <p className="mb-3 text-xs font-semibold tracking-[0.25em] text-yellow-400 uppercase sm:text-sm">
-          Locations
-        </p>
-        <h2 className="max-w-2xl text-3xl font-bold tracking-tight sm:text-5xl">
-          Where JFA Transit runs
-        </h2>
-        <p className="mt-4 max-w-xl text-base text-white/70 sm:text-lg">
-          Five cities across Panay Island. One hub, four destinations. Times and
-          fares below are the one-way figures from Iloilo City.
-        </p>
-
-        <div className="mt-12 border-b border-white/10">
-          {/* Hub row: the yellow name marks where every route starts. */}
-          <BoardRow>
-            <span className="rounded-md bg-yellow-400 px-2 py-1 text-xs font-bold text-black">
-              HUB
-            </span>
-            <div>
-              <h3 className="text-xl font-semibold text-yellow-400 sm:text-2xl">
-                {HUB.city}
-              </h3>
-              <p className="mt-1 max-w-xl text-sm text-white/60">
-                {HUB.fact}
-              </p>
-            </div>
-            <p className="text-sm text-white/50">
-              <span className="font-semibold text-white">4 routes</span> running
-              from the hub
+        {/* The board sits as a rounded panel on the paper background instead
+            of bleeding edge to edge, so no hard black-to-white seam. */}
+        <div className="rounded-3xl bg-charcoal text-white shadow-lg">
+          <div className="px-6 py-12 sm:px-12">
+            <p className="mb-3 text-xs font-semibold tracking-[0.25em] text-yellow-400 uppercase sm:text-sm">
+              Locations
             </p>
-          </BoardRow>
+            <h2 className="max-w-2xl text-3xl font-bold tracking-tight sm:text-5xl">
+              Where JFA Transit runs
+            </h2>
+            <p className="mt-4 max-w-xl text-base text-white/70 sm:text-lg">
+              Five cities across Panay Island. One hub, four destinations. Times
+              and fares below are the one-way figures from Iloilo City.
+            </p>
 
-          {DESTINATIONS.map(({ city, province, minutesFromHub, fareFromHub, fact }, i) => (
-            <BoardRow key={city}>
-              <span className="font-mono text-xs text-white/40">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <div>
-                <h3 className="text-xl font-semibold sm:text-2xl">
-                  {city} <span className="text-white/50">, {province}</span>
-                </h3>
-                <p className="mt-1 max-w-xl text-sm text-white/60">{fact}</p>
-              </div>
-              <div className="text-right sm:min-w-24">
-                <p className="font-semibold tabular-nums">
-                  {formatDuration(minutesFromHub)}
+            <div className="mt-12 border-b border-white/10">
+              {/* Hub row: the yellow name marks where every route starts. */}
+              <BoardRow>
+                <span className="rounded-md bg-yellow-400 px-2 py-1 text-xs font-bold text-black">
+                  HUB
+                </span>
+                <div>
+                  <h3 className="text-xl font-semibold text-yellow-400 sm:text-2xl">
+                    {HUB.city}
+                  </h3>
+                  <p className="mt-1 max-w-xl text-sm text-white/60">
+                    {HUB.fact}
+                  </p>
+                </div>
+                <p className="text-sm text-white/50">
+                  <span className="font-semibold text-white">4 routes</span>{" "}
+                  running from the hub
                 </p>
-                <p className="mt-0.5 text-sm tabular-nums text-white/60">
-                  from {fare(fareFromHub)}
-                </p>
-              </div>
-            </BoardRow>
-          ))}
+              </BoardRow>
+
+              {DESTINATIONS.map(
+                ({ city, province, minutesFromHub, fareFromHub, fact }, i) => (
+                  <BoardRow key={city}>
+                    <span className="font-mono text-xs text-white/40">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <div>
+                      <h3 className="text-xl font-semibold sm:text-2xl">
+                        {city} <span className="text-white/50">, {province}</span>
+                      </h3>
+                      <p className="mt-1 max-w-xl text-sm text-white/60">
+                        {fact}
+                      </p>
+                    </div>
+                    <div className="text-right sm:min-w-24">
+                      <p className="font-semibold tabular-nums">
+                        {formatDuration(minutesFromHub)}
+                      </p>
+                      <p className="mt-0.5 text-sm tabular-nums text-white/60">
+                        from {fare(fareFromHub)}
+                      </p>
+                    </div>
+                  </BoardRow>
+                ),
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </section>

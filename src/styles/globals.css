@@ -2,9 +2,17 @@
 
 @theme {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+  /* Warm paper + charcoal system: one light surface, one dark panel color,
+     one soft ink. Yellow-400 stays the accent on charcoal surfaces; ochre
+     does accent duty on paper, where bright yellow would fail contrast. */
+  --color-paper: #faf8f3;
+  --color-ink: #292524;
+  --color-charcoal: #1c1917;
+  --color-ochre: #7a5a08;
 }
 
 body {
-  background-color: #ffffff;
-  color: #171717;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
 }

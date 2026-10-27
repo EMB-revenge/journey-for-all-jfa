@@ -81,7 +81,7 @@ export default async function TicketPage({
           id="ticket-card"
           className="mt-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white"
         >
-          <div className="flex flex-wrap items-baseline justify-between gap-2 bg-neutral-900 px-6 py-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2 bg-charcoal px-6 py-4">
             <p className="text-sm text-white/70">Booking reference</p>
             <p className="font-mono text-lg font-bold text-yellow-400">
               {booking.bookingReference}

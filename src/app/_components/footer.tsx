@@ -20,7 +20,7 @@ const RESOURCES = [
 
 export function Footer() {
   return (
-    <footer className="bg-neutral-950 text-white">
+    <footer className="bg-charcoal text-white">
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
         <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.4fr]">
           <div>
