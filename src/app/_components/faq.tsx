@@ -1,9 +1,10 @@
 /**
  * FAQs answered from what the app actually does: booking confirm runs a
  * transaction that writes a CONFIRMED booking (see bookingRouter.confirm),
- * seats are held five minutes (HOLD_TTL_MS in holdRouter), and the ticket
- * page shows the QR and verification code. No cancel flow exists yet, so
- * that question answers honestly and points at the footer contacts.
+ * seats are held five minutes (HOLD_TTL_MS in holdRouter), the ticket page
+ * shows the QR and verification code, and a whole booking can be cancelled
+ * from My bookings before departure (see cancellationRouter.cancel), which
+ * releases its seats.
  */
 
 const POLICIES = [
@@ -25,7 +26,12 @@ const POLICIES = [
   {
     question: "Can I cancel or rebook?",
     answer:
-      "Not in this version yet. If you booked a trip that no longer works for you, contact the team through the links in the footer and we will sort it out.",
+      "You can cancel a whole booking from My bookings any time before the bus departs, as long as the ticket has not been used to board. Your seats go back on sale right away. To travel on a different trip, cancel the booking, then search and book the new trip. A booking cannot be switched to another trip or date in place.",
+  },
+  {
+    question: "How do I cancel a booking?",
+    answer:
+      "Open My bookings from the menu under your name, find the trip, and press Cancel booking, then confirm when asked. The ticket is marked cancelled and can no longer be used to board. This cannot be undone, and you cancel the whole booking, not a single seat. If the trip has already departed or the ticket was used to board, cancelling is not available, so contact the team through the links in the footer.",
   },
 ];
 
@@ -34,10 +40,10 @@ export function Faq() {
     <section id="faq" className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
       <div className="grid gap-10 md:grid-cols-[1fr_2fr] md:gap-16">
         <div>
-          <p className="mb-3 text-xs font-semibold tracking-[0.25em] text-ochre uppercase sm:text-sm">
+          <p className="text-ochre mb-3 text-xs font-semibold tracking-[0.25em] uppercase sm:text-sm">
             FAQ
           </p>
-          <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-5xl">
+          <h2 className="text-ink text-3xl font-bold tracking-tight sm:text-5xl">
             Answers before you board
           </h2>
         </div>
@@ -45,7 +51,7 @@ export function Faq() {
         <div className="divide-y divide-stone-200 border-y border-stone-200">
           {POLICIES.map(({ question, answer }) => (
             <details key={question} className="group py-5">
-              <summary className="flex cursor-pointer items-center justify-between gap-4 text-base font-semibold text-ink marker:content-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ochre">
+              <summary className="text-ink focus-visible:outline-ochre flex cursor-pointer items-center justify-between gap-4 text-base font-semibold marker:content-none focus-visible:outline-2 focus-visible:outline-offset-4">
                 {question}
                 {/* Cross turns when the row opens. */}
                 <span
