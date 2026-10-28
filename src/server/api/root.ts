@@ -5,7 +5,7 @@ import { cityRouter } from "~/server/api/routers/city";
 import { holdRouter } from "~/server/api/routers/hold";
 import { scheduleRouter } from "~/server/api/routers/schedule";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
-
+import { cancellationRouter } from "~/server/api/routers/cancellation";
 /**
  * This is the primary router for your server.
  *
@@ -18,6 +18,7 @@ export const appRouter = createTRPCRouter({
   city: cityRouter,
   hold: holdRouter,
   schedule: scheduleRouter,
+  cancellation: cancellationRouter,
 });
 
 // export type definition of API
