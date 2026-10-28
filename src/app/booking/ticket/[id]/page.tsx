@@ -50,6 +50,7 @@ export default async function TicketPage({
 
   const confirmed = booking.status === "CONFIRMED";
   const boarded = booking.checkedInAt !== null;
+  const cancelled = booking.status === "CANCELLED";
 
   return (
     <>
@@ -126,36 +127,54 @@ export default async function TicketPage({
 
           <div className="border-t border-neutral-200 px-6 py-6">
             <h2 className="text-lg font-semibold text-neutral-900">
-              {booking.seats.length === 1 ? "Passenger" : "Passengers"}
+              {cancelled
+                ? "Booking cancelled"
+                : booking.seats.length === 1
+                  ? "Passenger"
+                  : "Passengers"}
             </h2>
             <p className="mt-1 text-sm break-all text-neutral-500">
               Contact: {booking.contact.name} · {booking.contact.email}
               {booking.contact.phone ? ` · ${booking.contact.phone}` : ""}
             </p>
-            <ul className="mt-4 divide-y divide-neutral-200">
-              {booking.seats.map((seat) => (
-                <li
-                  key={seat.id}
-                  className="flex flex-wrap items-baseline justify-between gap-2 py-3"
-                >
-                  <p className="font-semibold break-words text-neutral-900">
-                    {seat.passengerName}
-                  </p>
-                  <p className="text-sm font-semibold text-neutral-900">
-                    Seat {seatLabel(seat.seatNumber)}
-                  </p>
-                </li>
-              ))}
-            </ul>
+            {cancelled ? (
+              <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                This booking was cancelled and its seats were released. This
+                ticket is no longer valid for boarding.
+              </p>
+            ) : (
+              <ul className="mt-4 divide-y divide-neutral-200">
+                {booking.seats.map((seat) => (
+                  <li
+                    key={seat.id}
+                    className="flex flex-wrap items-baseline justify-between gap-2 py-3"
+                  >
+                    <p className="font-semibold break-words text-neutral-900">
+                      {seat.passengerName}
+                    </p>
+                    <p className="text-sm font-semibold text-neutral-900">
+                      Seat {seatLabel(seat.seatNumber)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="border-t border-neutral-200 px-6 py-6">
             <div className="flex items-center justify-between text-sm text-neutral-600">
               <span>
-                {booking.seats.length} × ₱
-                {booking.unitFare.toLocaleString("en-PH")}
+                {cancelled
+                  ? "Cancelled"
+                  : `${booking.seats.length} × ₱${booking.unitFare.toLocaleString("en-PH")}`}
               </span>
-              <span className="text-2xl font-bold text-neutral-900">
+              <span
+                className={`text-2xl font-bold ${
+                  cancelled
+                    ? "text-neutral-400 line-through"
+                    : "text-neutral-900"
+                }`}
+              >
                 ₱{booking.totalAmount.toLocaleString("en-PH")}
               </span>
             </div>
@@ -183,15 +202,19 @@ export default async function TicketPage({
           </div>
         </div>
 
-        <p className="mt-4 text-sm text-neutral-500">
-          Arrive 30 minutes early and present this ticket when boarding.
-        </p>
+        {!cancelled && (
+          <p className="mt-4 text-sm text-neutral-500">
+            Arrive 30 minutes early and present this ticket when boarding.
+          </p>
+        )}
 
         <div className="mt-8 flex flex-wrap items-start gap-3">
-          <DownloadTicketButton
-            targetId="ticket-card"
-            fileName={`ticket-${booking.bookingReference}`}
-          />
+          {!cancelled && (
+            <DownloadTicketButton
+              targetId="ticket-card"
+              fileName={`ticket-${booking.bookingReference}`}
+            />
+          )}
           <Link
             href="/my-bookings"
             className="rounded-xl border border-neutral-300 px-6 py-3 text-sm font-semibold text-neutral-900 transition hover:border-yellow-400"
