@@ -14,7 +14,7 @@ Passenger: register (name, email, phone, password) → search (from, to, date, 1
 
 Admin: sidebar (Cities | Buses | Routes | Schedules | Bookings), no dashboard home; read all bookings.
 
-**Not in MVP:** payments, cancellation, no-show, round trips, discounts, GPS, SMS, social login.
+**Not in MVP:** payments, no-show, round trips, discounts, GPS, SMS, social login.
 
 ---
 
