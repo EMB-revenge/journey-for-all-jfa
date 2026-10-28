@@ -10,7 +10,7 @@ This document covers what the product is and why. Tables, procedures, and stack 
 
 ## 1. Overview
 
-A web app for booking one-way intercity(In Panay Island for now) bus trips. A passenger searches by route and date, picks a trip, selects seats (1–6), names each passenger, and receives a digital ticket. Contact details come from the account, set at sign-up. Administrators manage the bus fleet, routes, schedules, and cities, and can view all bookings.
+A web app for booking one-way intercity(In Panay Island for now) bus trips. A passenger searches by route and date, picks a trip, selects seats (1–6), names each passenger, and receives a digital ticket. Contact details come from the account, set at sign-up. A passenger can download the ticket as an image and cancel a booking until the bus departs. Administrators manage the bus fleet, routes, schedules, and cities, and can view all bookings.
 
 The system demonstrates a working booking and ticketing product: authentication, relational data, transactional seat allocation with temporary holds, and admin CRUD.
 
@@ -21,6 +21,8 @@ The system demonstrates a working booking and ticketing product: authentication,
 - Temporary seat holds (5 min) with a visible countdown to prevent conflicts mid-checkout
 - A digital ticket issued immediately after booking
 - One place for a passenger to see current and past bookings
+- Cancelling a booking before departure frees its seats immediately
+- A ticket the passenger can download as an image, with a QR code staff can scan to verify it
 - Full admin control over cities, buses, routes, and schedules via a consistent sidebar-driven CRUD layout
 - Seat availability that stays accurate under concurrent bookings
 
@@ -28,7 +30,7 @@ The system demonstrates a working booking and ticketing product: authentication,
 
 **Passengers** book seats for themselves or others travelling with them. They register, search, choose seats, enter details per seat, and present a ticket.
 
-**Administrators** are the three of us. We manage the fleet, cities, and schedule departures, and we read bookings to answer passenger questions. Booking status is managed automatically by the system (no manual confirm/cancel dropdown needed).
+**Administrators** are the three of us. We manage the fleet, cities, and schedule departures, and we read bookings to answer passenger questions. Bookings confirm automatically and passengers cancel their own, so there is no manual confirm/cancel dropdown. Admins can mark a ticket boarded.
 
 ## 4. Scope
 
@@ -40,15 +42,16 @@ The system demonstrates a working booking and ticketing product: authentication,
 - Seat selection with **available** and **occupied** states only (no held-by-other/held-by-me distinction in UI)
 - Temporary seat holds (5 min) with visible countdown; holds auto-expire and free seats
 - Passenger name per seat; contact details come from the account. Booking summary and confirmation
-- Digital ticket with booking reference
-- My Bookings: past and upcoming
+- Digital ticket with booking reference and a QR code that opens a public verification page; the ticket can be downloaded as an image
+- My Bookings: past and upcoming, with Cancel booking on upcoming bookings
+- Cancel a whole booking before departure; its seats are released at once
 - Admin sidebar navigation: Cities | Buses | Routes | Schedules | Bookings (no separate dashboard home)
 - Admin CRUD for cities, buses, routes, schedules using a consistent table + form pattern
 - Admin read-only view of all bookings with filtering by date/route
 
 ### Out of scope for now
 
-Payments, cancellation, no-show and check-in, waitlists, overbooking, round trips, discounts, per-seat pricing, live tracking, SMS notifications, social login.
+Payments and refunds, no-show tracking, waitlists, overbooking, round trips, discounts, per-seat pricing, live tracking, SMS notifications, social login. Cancelling part of a booking (one seat of several) and admin-side cancellation are also out.
 
 ## 5. Functional Requirements
 
@@ -62,7 +65,7 @@ Inputs: origin city, destination city, travel date, passenger count (1–6). The
 
 ### 5.3 Seat Selection
 
-The seat map shows every seat on the bus with its state: **available** or **occupied**. A passenger selects exactly as many seats as the passenger count. Selecting a different number blocks Continue. Occupied seats cannot be selected.
+The seat map shows every seat on the bus with its state: **available** or **occupied**. The map is a top view of the bus, four seats to a row with an aisle in the middle, and seats are labelled by row and letter (1A, 1B, then 1C, 1D). A passenger selects exactly as many seats as the passenger count. Selecting a different number blocks Continue. Occupied seats cannot be selected.
 
 ### 5.4 Holds
 
@@ -74,7 +77,7 @@ Inputs: one name per selected seat, prefilled from the account for the first one
 
 ### 5.6 My Bookings
 
-A passenger sees their own bookings with trip details, seat numbers, fare paid, booking reference, and status, and can reopen any ticket.
+A passenger sees their own bookings with trip details, seat numbers, fare paid, booking reference, and status, and can reopen any ticket. Upcoming confirmed bookings show a Cancel booking action (5.9).
 
 ### 5.7 Admin: Cities, Fleet and Schedules
 
@@ -88,11 +91,15 @@ Admins manage four entities via the sidebar, each using the same pattern: table 
 
 ### 5.8 Admin: Bookings
 
-Admins see all bookings with passenger and trip details and can filter by date or route. **Read-only** — status transitions (Confirmed/Cancelled) are handled automatically by the system, not manually by admins.
+Admins see all bookings with passenger and trip details and can filter by date or route. **Read-only** — admins do not confirm or cancel bookings by hand. Bookings confirm automatically and passengers cancel their own (5.9). The only admin action is marking a ticket boarded (SPEC 10.1).
+
+### 5.9 Cancelling a Booking
+
+A passenger can cancel a whole booking from My Bookings. It is allowed only while the booking is confirmed, the trip has not departed, and the ticket has not been used to board. The passenger confirms in a second step before anything changes. Cancelling marks the booking cancelled and frees its seats right away, so they can be booked again. The booking record and its fare stay, so the history is complete. A cancelled ticket shows as cancelled, lists no passengers or seats, and cannot be downloaded. Cancelling one seat of several is not possible. No refund is handled, because payment happens outside the system.
 
 ## 6. Non-Functional Requirements
 
-**Reliability.** The same seat cannot be sold twice on the same trip, even when two people confirm at the same instant. Booking writes are atomic: a booking never exists without its seats.
+**Reliability.** The same seat cannot be sold twice on the same trip, even when two people confirm at the same instant. Booking writes are atomic: an active booking never exists without its seats, and a cancelled booking never keeps any.
 
 **Security.** Passwords are stored hashed and never logged. Authentication is required at the first write, the seat hold, and for every admin action. Admin screens and admin data are closed to passengers. The admin check runs on the server, not only in the UI.
 
@@ -102,7 +109,7 @@ Admins see all bookings with passenger and trip details and can filter by date o
 
 ## 7. Flows
 
-**Passenger:** search → results → select trip → select seats → sign in → hold with countdown → passenger names → summary → confirm → ticket → My Bookings.
+**Passenger:** search → results → select trip → select seats → sign in → hold with countdown → passenger names → summary → confirm → ticket → My Bookings (download the ticket, or cancel before departure).
 
 **Admin:** log in → sidebar → manage cities, buses, routes, schedules → review bookings.
 
@@ -114,6 +121,7 @@ Admins see all bookings with passenger and trip details and can filter by date o
 - Admins manage the fleet and schedules without orphan data
 - Registration and login succeed for valid input
 - An abandoned hold frees its seats
+- A cancelled booking frees its seats, and another passenger can book them
 
 ## 9. Assumptions
 
@@ -127,7 +135,7 @@ Admins see all bookings with passenger and trip details and can filter by date o
 
 ## 10. Out-of-MVP Hooks
 
-Leave room rather than build now: payment status transitions, cancellation and no-show as booking statuses instead of deletions, per-seat fare amounts for discounts, a second schedule on a booking for round trips.
+Leave room rather than build now: payment status transitions and refunds, no-show as a booking status instead of a deletion, per-seat fare amounts for discounts, a second schedule on a booking for round trips.
 
 ## 11. Development Process
 
