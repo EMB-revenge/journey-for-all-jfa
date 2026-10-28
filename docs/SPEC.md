@@ -22,7 +22,7 @@ A web app for booking one-way intercity(In Panay Island for now) bus trips: sear
 
 ### MVP goals
 
-- Passenger register/login, search, seat selection, multi-seat booking (1–6), digital ticket, booking history
+- Passenger register/login, search, seat selection, multi-seat booking (1–6), digital ticket (downloadable as an image), booking history, cancellation before departure
 - Admin CRUD for cities, buses, routes, schedules; view all bookings; check a ticket in once
 - Accurate seat availability (no double-booking)
 - Unique sequential booking references
@@ -31,7 +31,7 @@ A web app for booking one-way intercity(In Panay Island for now) bus trips: sear
 ### Explicitly out of MVP
 
 - Real payment gateway (bookings auto-confirm)
-- Passenger or admin cancellation UI
+- Admin cancellation of bookings, cancelling part of a booking (one seat of several), and refunds
 - No-show, waitlist, overbooking, GPS, SMS
 - Round-trip bookings
 - Student/senior/PWD discounts
@@ -42,7 +42,7 @@ A web app for booking one-way intercity(In Panay Island for now) bus trips: sear
 ### Future, schema-friendly, not built
 
 - Simulated payment status (`PENDING_PAYMENT` → `CONFIRMED`)
-- Cancellation / no-show / waitlist, as new `BookingStatus` values. Bookings are never deleted; cancelling releases seats
+- No-show / waitlist, as new `BookingStatus` values. Bookings are never deleted
 - Per-seat fare snapshot on `booking_seats` for discounts
 - Round-trip, as a second schedule on a booking
 
@@ -52,7 +52,7 @@ A web app for booking one-way intercity(In Panay Island for now) bus trips: sear
 
 | Role | How created | What they do |
 | --- | --- | --- |
-| Passenger | Self sign-up, `role` defaults to `PASSENGER` | Search, book, view own tickets, edit account details, change password |
+| Passenger | Self sign-up, `role` defaults to `PASSENGER` | Search, book, view and download own tickets, cancel own bookings before departure, edit account details, change password |
 | Admin | Seeded from env (Fletcher, Joe, Amiel), `role = ADMIN` | Same as passenger plus the admin sidebar |
 
 One app. `user.role` gates admin pages (`src/middleware.ts`) and admin procedures (`adminProcedure`).
@@ -152,7 +152,7 @@ bus_ticketing/
       api/
         trpc.ts            # context, publicProcedure, protectedProcedure, adminProcedure
         root.ts
-        routers/           # city, busType, schedule, hold, booking, admin
+        routers/           # city, busType, schedule, hold, booking, cancellation, admin
     trpc/                  # tRPC React client (from the scaffold)
     styles/globals.css
     middleware.ts          # route guard for /admin
@@ -167,7 +167,7 @@ bus_ticketing/
 
 Scaffolded 2026-09-30 with `create-t3-app` 7.40.0: tRPC v11, Prisma 6 with client output in `generated/prisma`, Tailwind v4, ESLint, Prettier, and Better Auth 1.3 wired with the Prisma adapter and email/password enabled.
 
-Landed since: the domain schema with its first migration and seed (bus types, cities, three admins), the full account story (`/register`, `/login`, `/account`, `/change-password`, `AuthProvider`, the `/admin` route guard), and the tRPC foundation (`protectedProcedure`, `adminProcedure`, `city.list`, `busType.list`, `admin.booking.list`). `/search` with `schedule.search` came in from an early branch and was finished in Phase 4 (route + date + passengers, departed and cancelled excluded, `availableSeats` filter, Asia/Manila date guard). `/booking/seat-map` followed with `schedule.seats` and atomic one-batch holds (`hold.create`, `hold.release`); the seat selection survives a login detour through `BookingFlowProvider`, occupied seats read as both booked and actively held, and an expired hold frees its seat. The seed now also carries demo buses, routes, and trips for the next three days, so a fresh database has searchable trips.
+Landed since: the domain schema with its first migration and seed (bus types, cities, three admins), the full account story (`/register`, `/login`, `/account`, `/change-password`, `AuthProvider`, the `/admin` route guard), and the tRPC foundation (`protectedProcedure`, `adminProcedure`, `city.list`, `busType.list`, `admin.booking.list`). `/search` with `schedule.search` came in from an early branch and was finished in Phase 4 (route + date + passengers, departed and cancelled excluded, `availableSeats` filter, Asia/Manila date guard). `/booking/seat-map` followed with `schedule.seats` and atomic one-batch holds (`hold.create`, `hold.release`); the seat selection survives a login detour through `BookingFlowProvider`, occupied seats read as both booked and actively held, and an expired hold frees its seat. The seed now also carries demo buses, routes, and trips for the next three days, so a fresh database has searchable trips. Passenger cancellation landed after that (`cancellation.cancel`, a Cancel booking action on `/my-bookings`, and a cancelled state on the ticket page), along with the ticket QR and a PNG download of the ticket.
 
 The scaffold leftovers are gone: the `Post` model and router, `_components/post.tsx`, `socialProviders.github`, the two `BETTER_AUTH_GITHUB_*` vars, and `@auth/prisma-adapter`.
 
@@ -209,12 +209,12 @@ Sign-up inserts `role = PASSENGER` by default. Better Auth generates these four 
 
 Money is `Decimal(10,2)`. `Seat` has no status column: occupancy belongs to a schedule, not to a bus.
 
-Bookings are never deleted. Schedules with bookings are cancelled with `isCancelled`, never removed.
+Bookings are never deleted. Schedules with bookings are cancelled with `isCancelled`, never removed. The one case where a booking has no seats is a cancelled one: cancelling deletes its `booking_seats` rows so the seats can be booked again, and the booking keeps its status, fare snapshot, and `checkedInAt`.
 
 ### 8.3 Enums
 
 `Role` = `PASSENGER` | `ADMIN`
-`BookingStatus` = `CONFIRMED`, with `PENDING_PAYMENT`, `CANCELLED`, `NO_SHOW` reserved for later
+`BookingStatus` = `CONFIRMED` and `CANCELLED`, with `PENDING_PAYMENT` and `NO_SHOW` reserved for later
 
 ### 8.4 Availability
 
@@ -234,6 +234,7 @@ When an admin creates a bus, the bus procedure creates seats `1..capacity` insid
 - `UNIQUE(schedule_id, seat_id)` on `booking_seats`
 - `UNIQUE(schedule_id, seat_id)` on `seat_holds`
 - `booking.confirm` runs in one transaction: insert booking plus booking seats, delete that user's holds. A unique violation becomes a `CONFLICT` error carrying `takenSeats`
+- `cancellation.cancel` runs in one transaction: a conditional update moves the booking from `CONFIRMED` to `CANCELLED`, then its `booking_seats` rows are deleted. Deleting is what frees the seats, because the unique constraint would otherwise keep blocking them
 
 First to confirm still wins after a hold expires, because the constraint does not care who held what.
 
@@ -260,7 +261,15 @@ Format `BK-YYYYMMDD-NNNNNN`, generated in the backend during the confirm transac
 
 `booking.verificationCode` is a random UUID set at confirm, so the QR URL cannot be walked like the sequential reference. The QR opens `/verify/[code]`, a public read-only page that masks passenger names and shows no fare or contact details.
 
-Admins signed in on that page see a "Mark boarded" button. `booking.checkIn` sets `checkedInAt` once, only for a `CONFIRMED` booking whose schedule is not cancelled and whose travel date is today in Manila. The conditional `updateMany` on `checkedInAt IS NULL` makes a second scan report the original time instead of writing twice. Passengers cannot reach the mutation; `adminProcedure` is the gate.
+Admins signed in on that page see a "Mark boarded" button. `booking.checkIn` sets `checkedInAt` once, only for a `CONFIRMED` booking whose schedule is not cancelled and whose travel date is today in Manila. The conditional `updateMany` on `checkedInAt IS NULL` makes a second scan report the original time instead of writing twice. Passengers cannot reach the mutation; `adminProcedure` is the gate. A cancelled booking still resolves on `/verify/[code]` and reports its status, and cancelling is blocked once `checkedInAt` is set.
+
+### 10.2 Ticket download
+
+The ticket page saves the ticket card as a PNG in the browser (`html-to-image`), with no server code. The button is hidden on cancelled tickets. The QR holds the address the page was opened from, so tickets downloaded on localhost carry a localhost link.
+
+### 10.3 Seat labels
+
+Seats are stored as numbers 1..capacity and shown as row and letter, four to a row (`seatLabel` in `src/app/_lib/format.ts`): 1 is 1A, 4 is 1D, 5 is 2A. The seat map draws A B, an aisle, then C D. A bus with another layout would need a layout field on `Bus`.
 
 ---
 
@@ -278,6 +287,7 @@ Search (origin, dest, date >= today, passengers 1-6)
 See `docs/passenger_flow.mermaid` for the diagram, including the expiry and conflict paths.
 
 - One-way only, auto-confirmed, no payment step
+- A confirmed booking can be cancelled whole from My Bookings until the bus departs and until the ticket is used to board. Its seats are released at once
 - Search hides past dates, departed trips, and cancelled schedules
 - Search, results, and the seat map are public. Continue is the first write, so a signed-out passenger is sent to `/login?redirectTo=...` from there, not before browsing. The seat selection survives the round trip because `BookingFlowProvider` sits in the root layout
 - Holds start on Continue, not on each seat click. Unclicking before Continue is local only
@@ -343,6 +353,7 @@ Auth lives in Better Auth's own routes. Everything below is a procedure. All inp
 | `booking.confirm` | protected | `{ scheduleId, passengers: [{ seatId, name }] }` | booking, seats, ticket payload with the account as contact | `CONFLICT` + `takenSeats` or `reason: "HOLD_EXPIRED"`, `PRECONDITION_FAILED` for a departed or cancelled schedule |
 | `booking.list` | protected | none | own bookings, newest first | |
 | `booking.get` | protected | `{ id }` | own booking with seats | `NOT_FOUND` |
+| `cancellation.cancel` | protected | `{ id }` | `{ id }` | `NOT_FOUND`, `PRECONDITION_FAILED` for a booking that is not confirmed, already boarded, or already departed |
 | `booking.verify` | public | `{ code }` | ticket check: status, route, date, masked passengers, `checkedInAt` | `NOT_FOUND` |
 | `booking.checkIn` | admin | `{ code }` | `{ checkedInAt, alreadyCheckedIn }` | `NOT_FOUND`, `PRECONDITION_FAILED`, `CONFLICT` |
 | `admin.city.*` | admin | CRUD | | `CONFLICT` on duplicate name |
@@ -351,7 +362,7 @@ Auth lives in Better Auth's own routes. Everything below is a procedure. All inp
 | `admin.schedule.*` | admin | CRUD, no fare field | | `CONFLICT` on duplicate bus/date/time |
 | `admin.booking.list` | admin | optional date and route filters | all bookings | |
 
-Bookings are read-only for admins, apart from check-in. Cancelling a schedule sets `isCancelled`.
+Bookings are read-only for admins, apart from check-in. Passengers cancel their own bookings through `cancellation.cancel`, which lives in its own router file. Cancelling a schedule sets `isCancelled`.
 
 ---
 
@@ -376,7 +387,8 @@ Creating a bus creates its seats in the same transaction. Deleting is limited to
 - Auth gate: the navbar carries one neutral `Sign in` action for signed-out visitors, since yellow belongs to the booking path (Search trips, Select seat, Continue, Confirm). Signed-in visitors get an account menu with Account, My bookings, and Sign out. Change password lives on `/account`, beside the name and phone fields. The write gate itself is at Continue on `/booking/seat-map`
 - Booking flow state lives in `BookingFlowProvider` + `bookingFlowReducer`: selected schedule, passenger count, selected seats, hold expiry, per-seat passenger names. It survives the route changes between seat map, passengers, and summary
 - The hold countdown is a client timer seeded from `expiresAt`
-- Styling is Tailwind, functional. The seat map is a numbered grid with two states: available vs occupied (held seats render as occupied)
+- Styling is Tailwind, functional. The seat map is a top view of the bus (driver and door at the front, four seats to a row with an aisle, labelled 1A to 10D) with two states: available vs occupied (held seats render as occupied)
+- `/my-bookings` shows Cancel booking only on confirmed, upcoming bookings that have not boarded. Cancelled bookings show a red badge and "Seats released". The ticket page shows a cancelled state and hides the download button
 
 ---
 
@@ -392,6 +404,7 @@ Creating a bus creates its seats in the same transaction. Deleting is limited to
 | Hold expired | `CONFLICT` + `reason: "HOLD_EXPIRED"` | back to seat map, refetch |
 | Schedule departed or cancelled | `PRECONDITION_FAILED` | back to search |
 | Wrong user asking for a booking | `NOT_FOUND` | back to `/my-bookings` |
+| Cancel not allowed (not confirmed, already boarded, departed) | `PRECONDITION_FAILED` | show the message in the confirm panel |
 
 tRPC returns HTTP 200 with a typed error body, so the UI branches on `error.data.code`, never on status codes.
 
@@ -408,6 +421,8 @@ Manual, in this order:
 5. Let a hold expire → the seat becomes bookable again
 6. Admin creates a city, bus, route, schedule → a passenger can search and book that trip
 7. Passenger cannot reach `/admin` by URL, and admin procedures reject a passenger session
+8. Cancel an upcoming booking from My bookings → its ticket shows cancelled with no download button → the seat is free on the seat map → book that seat again
+9. Download a ticket and check that the QR and the text are in the image
 
 Worth unit testing when time allows: fare resolution, availability count, and departure filtering. No E2E suite for the MVP.
 
@@ -461,7 +476,7 @@ Branches: `main` is production, `dev` is integration, features branch off `dev`.
 7. Fare snapshot on the booking (`unitFare` + `totalAmount`), always from the route's `baseFare`
 8. Multi-seat with a name per seat, maximum 6. Contact details come from the booking's account, so booking never asks for an email or phone
 9. One-way only
-10. No cancellation in the MVP
+10. Passengers can cancel a whole confirmed booking before departure and before boarding. Cancelling deletes the booking's seat rows and keeps the booking as `CANCELLED`. No partial cancel, no admin cancel, no refunds
 11. Auto-confirm, no payment step
 12. Bus types are Ordinary (non-aircon) and Aircon only
 13. Cities are their own table
@@ -471,6 +486,8 @@ Branches: `main` is production, `dev` is integration, features branch off `dev`.
 17. Better Auth over NextAuth
 18. Tailwind over styled-components
 19. Prisma over Drizzle
+20. Ticket download is a client-side PNG of the ticket card, with no PDF generation
+21. Seats are stored as numbers 1..capacity and shown as row and letter, four to a row
 
 ---
 
@@ -482,6 +499,7 @@ Branches: `main` is production, `dev` is integration, features branch off `dev`.
 - Admins manage fleet, routes, and schedules without orphan data
 - Register and log in work for valid input
 - A hold expires and the seat becomes bookable again
+- A cancelled booking releases its seats and they can be booked again
 
 ---
 
