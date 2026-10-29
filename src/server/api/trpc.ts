@@ -149,9 +149,8 @@ export const protectedProcedure = t.procedure
  * @see https://trpc.io/docs/procedures
  */
 export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.session.user.role !== "ADMIN") {
-    throw new TRPCError({ code: "FORBIDDEN" });
-  }
+  const { role, isActive } = ctx.session.user;
+  if (role !== "ADMIN" || !isActive) throw new TRPCError({ code: "FORBIDDEN" });
   return next();
 });
 
