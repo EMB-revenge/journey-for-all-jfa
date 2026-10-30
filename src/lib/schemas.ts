@@ -118,6 +118,16 @@ export const confirmBookingSchema = z.object({
 
 export const bookingIdSchema = z.object({ id: z.string().min(1) });
 
+export const feedbackSchema = z.object({
+  name: personName,
+  email: emailSchema,
+  message: z
+    .string()
+    .trim()
+    .min(10, "Message must be at least 10 characters")
+    .max(2000, "Message must be under 2000 characters"),
+});
+
 /** First message per field, for rendering under inputs. */
 export function fieldErrors(error: z.ZodError): Record<string, string> {
   const errors = error.flatten().fieldErrors;

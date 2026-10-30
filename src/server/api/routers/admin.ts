@@ -1,3 +1,6 @@
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -38,5 +41,27 @@ export const adminRouter = createTRPCRouter({
         },
       });
     }),
+  }),
+
+  /** Contact messages, open ones first. */
+  feedback: createTRPCRouter({
+    list: adminProcedure.query(({ ctx }) =>
+      ctx.db.feedback.findMany({
+        orderBy: [
+          { resolvedAt: { sort: "asc", nulls: "first" } },
+          { createdAt: "desc" },
+        ],
+      }),
+    ),
+
+    resolve: adminProcedure
+      .input(z.object({ id: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        const { count } = await ctx.db.feedback.updateMany({
+          where: { id: input.id, resolvedAt: null },
+          data: { resolvedAt: new Date() },
+        });
+        if (count === 0) throw new TRPCError({ code: "NOT_FOUND" });
+      }),
   }),
 });
