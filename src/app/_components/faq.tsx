@@ -55,8 +55,8 @@ const POLICIES = [
     answer: (
       <>
         Cancelling is unavailable once the trip departs or the ticket was used
-        to board. <strong>Contact the team</strong> through the links in the
-        footer.
+        to board. <strong>Submit a ticket</strong> from the footer and the team
+        replies by email.
       </>
     ),
   },
