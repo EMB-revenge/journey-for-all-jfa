@@ -3,7 +3,7 @@ import Link from "next/link";
 
 /** Footer contacts are the people who built and run JFA Transit. */
 const CONTACTS = [
-  { name: "Fletcher Malala", email: "fletcherjan.malala-24@cpu.edu.ph" },
+  { name: "Fletcher Jan Malala", email: "fletcherjan.malala-24@cpu.edu.ph" },
   { name: "Amiel Benedict Mirasol", email: "amielbenedict.mirasol-13@cpu.edu.ph" },
   { name: "Joe Steven Bandong", email: "joesteven.bandong-24@cpu.edu.ph" },
 ];
