@@ -59,7 +59,7 @@ export function Navbar() {
           ) : session ? (
             <details className="group relative">
               <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-white/30 px-3 py-2 text-sm font-semibold text-white transition hover:border-yellow-400 hover:text-yellow-400 sm:px-4 [&::-webkit-details-marker]:hidden">
-                <span className="max-w-[5.5rem] truncate sm:max-w-[14rem]">
+                <span className="max-w-22 truncate sm:max-w-56">
                   {session.user.name}
                 </span>
                 <svg
