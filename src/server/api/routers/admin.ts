@@ -11,9 +11,7 @@ const timeStr = (d: Date) => d.toISOString().slice(11, 16);
 
 // Today's date in the Philippines, as UTC midnight (matches how @db.Date is read).
 const todayPH = () =>
-  new Date(
-    new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }),
-  );
+  new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }));
 
 export const adminRouter = createTRPCRouter({
   stats: adminProcedure.query(async ({ ctx }) => {
@@ -177,8 +175,14 @@ export const adminRouter = createTRPCRouter({
                   mode: "insensitive",
                 },
               },
-              { user: { email: { contains: input.search, mode: "insensitive" } } },
-              { user: { name: { contains: input.search, mode: "insensitive" } } },
+              {
+                user: {
+                  email: { contains: input.search, mode: "insensitive" },
+                },
+              },
+              {
+                user: { name: { contains: input.search, mode: "insensitive" } },
+              },
             ],
           }),
         },
@@ -202,8 +206,7 @@ export const adminRouter = createTRPCRouter({
         },
       });
 
-      const nextCursor =
-        rows.length > PAGE_SIZE ? rows.pop()!.id : undefined;
+      const nextCursor = rows.length > PAGE_SIZE ? rows.pop()!.id : undefined;
 
       return {
         nextCursor,
@@ -293,4 +296,26 @@ export const adminRouter = createTRPCRouter({
         }
       });
     }),
+
+  /** Contact messages, open ones first. */
+  feedback: createTRPCRouter({
+    list: adminProcedure.query(({ ctx }) =>
+      ctx.db.feedback.findMany({
+        orderBy: [
+          { resolvedAt: { sort: "asc", nulls: "first" } },
+          { createdAt: "desc" },
+        ],
+      }),
+    ),
+
+    resolve: adminProcedure
+      .input(z.object({ id: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        const { count } = await ctx.db.feedback.updateMany({
+          where: { id: input.id, resolvedAt: null },
+          data: { resolvedAt: new Date() },
+        });
+        if (count === 0) throw new TRPCError({ code: "NOT_FOUND" });
+      }),
+  }),
 });

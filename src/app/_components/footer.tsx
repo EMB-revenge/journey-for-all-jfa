@@ -3,8 +3,11 @@ import Link from "next/link";
 
 /** Footer contacts are the people who built and run JFA Transit. */
 const CONTACTS = [
-  { name: "Fletcher Malala", email: "fletcherjan.malala-24@cpu.edu.ph" },
-  { name: "Amiel Benedict Mirasol", email: "amielbenedict.mirasol-13@cpu.edu.ph" },
+  { name: "Fletcher Jan Malala", email: "fletcherjan.malala-24@cpu.edu.ph" },
+  {
+    name: "Amiel Benedict Mirasol",
+    email: "amielbenedict.mirasol-13@cpu.edu.ph",
+  },
   { name: "Joe Steven Bandong", email: "joesteven.bandong-24@cpu.edu.ph" },
 ];
 
@@ -74,18 +77,20 @@ export function Footer() {
           <div>
             <h3 className="text-sm font-semibold text-white">Contact</h3>
             <p className="mt-4 text-sm text-white/60">
-              Questions about a booking or a trip, reach any of the team:
+              Locked out, overcharged, or stuck on a booking? Submit a ticket
+              and the team replies by email.
             </p>
-            <ul className="mt-3 space-y-2">
+            <Link
+              href="/contact"
+              className="mt-3 inline-block rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-black transition hover:bg-yellow-300"
+            >
+              Submit a ticket
+            </Link>
+            <ul className="mt-5 space-y-2">
               {CONTACTS.map(({ name, email }) => (
-                <li key={email}>
-                  <a
-                    href={`mailto:${email}`}
-                    className="text-sm text-white/60 transition hover:text-yellow-400"
-                  >
-                    {name}
-                    <span className="block text-xs text-white/40">{email}</span>
-                  </a>
+                <li key={email} className="text-sm text-white/60">
+                  {name}
+                  <span className="block text-xs text-white/40">{email}</span>
                 </li>
               ))}
             </ul>

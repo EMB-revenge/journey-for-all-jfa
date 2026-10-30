@@ -10,28 +10,55 @@
 const POLICIES = [
   {
     question: "Do I need an account to book?",
-    answer:
-      "Searching trips is open to everyone. To confirm a booking and take the seats, you need to be signed in so your ticket lands in My bookings.",
+    answer: (
+      <>
+        Searching trips is open to everyone. To confirm a booking and take the
+        seats, you need to be <strong>signed in</strong> so your ticket lands in
+        My bookings.
+      </>
+    ),
   },
   {
     question: "How long are my seats held?",
-    answer:
-      "Five minutes from the moment you pick seats on the map. A countdown runs while you enter passenger names and review the summary. If it runs out, the seats go back on sale and you can pick again.",
+    answer: (
+      <>
+        <strong>Five minutes</strong> from the moment you pick seats on the map.
+        A countdown runs while you enter passenger names and review the summary.
+        If it runs out, the seats go back on sale and you can pick again.
+      </>
+    ),
   },
   {
     question: "When is my booking confirmed?",
-    answer:
-      "Right away. When you confirm, your booking reference is written immediately and your ticket opens with a QR code and a verification code you show at the terminal.",
+    answer: (
+      <>
+        <strong>Right away.</strong> When you confirm, your booking reference is
+        written immediately and your ticket opens with a QR code and a
+        verification code you show at the terminal.
+      </>
+    ),
   },
   {
-    question: "Can I cancel or rebook?",
-    answer:
-      "You can cancel a whole booking from My bookings any time before the bus departs, as long as the ticket has not been used to board. Your seats go back on sale right away. To travel on a different trip, cancel the booking, then search and book the new trip. A booking cannot be switched to another trip or date in place.",
+    question: "How do I cancel my booking?",
+    answer: (
+      <>
+        <strong>My bookings</strong> (menu under your name) →{" "}
+        <strong>Cancel booking</strong> → confirm. You cancel the whole booking,
+        your seats sell again right away, and you cannot undo it. To travel on a
+        different trip, cancel first, then book the new trip; you cannot switch
+        a booking to another trip or date.
+      </>
+    ),
   },
   {
-    question: "How do I cancel a booking?",
-    answer:
-      "Open My bookings from the menu under your name, find the trip, and press Cancel booking, then confirm when asked. The ticket is marked cancelled and can no longer be used to board. This cannot be undone, and you cancel the whole booking, not a single seat. If the trip has already departed or the ticket was used to board, cancelling is not available, so contact the team through the links in the footer.",
+    question: "What if the trip already departed?",
+    answer: (
+      <>
+        Cancelling is unavailable once the trip departs or the ticket was used
+        to board. <strong>Submit a ticket</strong> from the footer and the team
+        replies by email.
+      </>
+    ),
   },
 ];
 

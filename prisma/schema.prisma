@@ -286,3 +286,17 @@ model BookingCounter {
 
   @@map("booking_counters")
 }
+
+// Messages sent from /contact. Guests can send, admins read them at
+// /admin/feedback. resolvedAt null means still open.
+model Feedback {
+  id         String    @id @default(cuid())
+  name       String
+  email      String
+  message    String    @db.Text
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([resolvedAt])
+  @@map("feedback")
+}

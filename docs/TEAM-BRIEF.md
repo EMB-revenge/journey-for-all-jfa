@@ -6,6 +6,15 @@
 
 ---
 
+## Where we are
+
+| Item | Status |
+| --- | --- |
+| Deployment | **Not deployed.** No Vercel app and no Railway database exist yet, so everything lives on `main` locally. Update this row the day the first deploy goes live. |
+| Checked | 2026-10-30 |
+
+---
+
 ## What we are building
 
 A one-way intercity bus booking site.

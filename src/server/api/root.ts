@@ -2,6 +2,7 @@ import { adminRouter } from "~/server/api/routers/admin";
 import { bookingRouter } from "~/server/api/routers/booking";
 import { busTypeRouter } from "~/server/api/routers/busType";
 import { cityRouter } from "~/server/api/routers/city";
+import { feedbackRouter } from "~/server/api/routers/feedback";
 import { holdRouter } from "~/server/api/routers/hold";
 import { scheduleRouter } from "~/server/api/routers/schedule";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
@@ -16,6 +17,7 @@ export const appRouter = createTRPCRouter({
   booking: bookingRouter,
   busType: busTypeRouter,
   city: cityRouter,
+  feedback: feedbackRouter,
   hold: holdRouter,
   schedule: scheduleRouter,
   cancellation: cancellationRouter,
