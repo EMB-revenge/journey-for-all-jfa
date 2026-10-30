@@ -48,6 +48,7 @@ The system demonstrates a working booking and ticketing product: authentication,
 - Admin sidebar navigation: Cities | Buses | Routes | Schedules | Bookings (no separate dashboard home)
 - Admin CRUD for cities, buses, routes, schedules using a consistent table + form pattern
 - Admin read-only view of all bookings with filtering by date/route
+- Contact page that stores a support ticket for admins to answer; the footer lists the team as plain text with a link to the page
 
 ### Out of scope for now
 

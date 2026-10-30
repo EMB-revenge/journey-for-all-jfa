@@ -206,6 +206,7 @@ Sign-up inserts `role = PASSENGER` by default. Better Auth generates these four 
 `passengerEmail` and `passengerPhone` are legacy: bookings now take contact details from the account, so the confirm transaction writes only the passenger name.
 | SeatHold | `seat_holds` | `id`, `scheduleId`, `seatId`, `userId`, `expiresAt` | unique `(scheduleId, seatId)` |
 | BookingCounter | `booking_counters` | `date` (PK), `lastNumber` | one row per day |
+| Feedback | `feedback` | `id`, `name`, `email`, `message`, `resolvedAt?`, `createdAt` | `resolvedAt` index; null means open |
 
 Money is `Decimal(10,2)`. `Seat` has no status column: occupancy belongs to a schedule, not to a bus.
 
@@ -361,6 +362,9 @@ Auth lives in Better Auth's own routes. Everything below is a procedure. All inp
 | `admin.route.*` | admin | CRUD | | `CONFLICT` on duplicate origin/dest |
 | `admin.schedule.*` | admin | CRUD, no fare field | | `CONFLICT` on duplicate bus/date/time |
 | `admin.booking.list` | admin | optional date and route filters | all bookings | |
+| `feedback.send` | public | `{ name, email, message }` | `{ id }` | `INPUT_PARSE_ERROR` |
+| `admin.feedback.list` | admin | none | contact messages, open first | |
+| `admin.feedback.resolve` | admin | `{ id }` | none | `NOT_FOUND` when already handled |
 
 Bookings are read-only for admins, apart from check-in. Passengers cancel their own bookings through `cancellation.cancel`, which lives in its own router file. Cancelling a schedule sets `isCancelled`.
 
@@ -368,7 +372,7 @@ Bookings are read-only for admins, apart from check-in. Passengers cancel their 
 
 ## 15. Admin flow
 
-Login → sidebar (Cities | Buses | Routes | Schedules | Bookings), no separate dashboard home. `/admin` redirects to the first section. Each of Cities, Buses, Routes, Schedules uses one pattern: table of records, "Add" button opens a form, Edit/Deactivate per row. Bookings is a read-only table with date/route filters and a check-in action.
+Login → sidebar (Cities | Buses | Routes | Schedules | Bookings | Contact tickets), no separate dashboard home. `/admin` redirects to the first section. Each of Cities, Buses, Routes, Schedules uses one pattern: table of records, "Add" button opens a form, Edit/Deactivate per row. Bookings is a read-only table with date/route filters and a check-in action. Contact tickets lists messages from `/contact`, open first, each with a Mark handled action.
 
 Creating a bus creates its seats in the same transaction. Deleting is limited to records with no dependencies; anything referenced by a schedule or booking gets `isActive = false` or `isCancelled = true` instead.
 
@@ -378,9 +382,9 @@ Creating a bus creates its seats in the same transaction. Deleting is limited to
 
 **Passenger:** `/` search, `/login`, `/register`, `/account`, `/change-password`, `/booking/seat-map`, `/booking/passengers`, `/booking/summary`, `/booking/ticket/[id]`, `/my-bookings`
 
-**Public:** `/verify/[code]` (read-only ticket check behind the QR)
+**Public:** `/verify/[code]` (read-only ticket check behind the QR), `/contact` (contact form; writes a `feedback` row)
 
-**Admin:** `/admin` redirects to `/admin/cities`; `/admin/cities`, `/admin/buses`, `/admin/routes`, `/admin/schedules`, `/admin/bookings`
+**Admin:** `/admin` redirects to `/admin/cities`; `/admin/cities`, `/admin/buses`, `/admin/routes`, `/admin/schedules`, `/admin/bookings`, `/admin/feedback`
 
 - `src/app/layout.tsx` holds the shared shell, `AuthProvider`, and `BookingFlowProvider`. Admin links render only when `session.user.role === "ADMIN"`
 - Pages that read the session or run mutations are client components. Search and results can be server components that call procedures through the server caller
