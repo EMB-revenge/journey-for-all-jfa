@@ -51,6 +51,11 @@ export function SummaryView({ params }: { params: SeatMapParams }) {
     [data],
   );
 
+  function labelFor(seatId: string) {
+    const seatNumber = seatNumbers.get(seatId);
+    return seatNumber === undefined ? "—" : seatLabel(seatNumber);
+  }
+
   const handleExpire = useCallback(() => {
     releaseHolds(
       { scheduleId: params.scheduleId },
@@ -83,7 +88,7 @@ export function SummaryView({ params }: { params: SeatMapParams }) {
             .sort((a, b) => a - b);
           setError(
             numbers.length > 0
-              ? `Seat ${numbers.join(", ")} was taken while you were confirming. Pick another.`
+              ? `Seat ${numbers.map(seatLabel).join(", ")} was taken while you were confirming. Pick another.`
               : "Someone took one of those seats. Pick another.",
           );
           dispatch({ type: "holdCleared" });
@@ -237,7 +242,7 @@ export function SummaryView({ params }: { params: SeatMapParams }) {
             >
               <p className="font-semibold text-neutral-900">{passenger.name}</p>
               <p className="text-sm font-semibold text-neutral-900">
-                Seat {seatNumbers.get(passenger.seatId) ?? "—"}
+                Seat {labelFor(passenger.seatId)}
               </p>
             </li>
           ))}
