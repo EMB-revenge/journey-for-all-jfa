@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { HoldCountdown } from "~/app/_components/booking/hold-countdown";
-import { formatDuration, formatLongDate, formatTime } from "~/app/_lib/format";
+import {
+  formatDuration,
+  formatLongDate,
+  formatTime,
+  seatLabel,
+} from "~/app/_lib/format";
 import { useAuth } from "~/context/AuthContext";
 import { useBookingFlow } from "~/context/BookingFlowProvider";
 import { searchHref, seatMapHref, type SeatMapParams } from "~/lib/seat-map";
