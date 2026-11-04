@@ -11,10 +11,11 @@ export function Navbar() {
   const router = useRouter();
   const { session } = useAuth();
 
+  const isAdmin = session?.user.role === "ADMIN";
+
   const links = [
     { label: "Book a trip", href: "/" },
     { label: "My bookings", href: "/my-bookings" },
-    // "Admin" comes back when that page lands.
   ];
 
   async function handleSignOut() {
@@ -54,6 +55,15 @@ export function Navbar() {
         </ul>
 
         <div className="flex items-center gap-3">
+          {!isAdmin && (
+            <Link
+              href="/login?redirectTo=/admin"
+              className="rounded-xl border border-yellow-400 px-3 py-2 text-sm font-semibold text-yellow-400 transition hover:bg-yellow-400 hover:text-charcoal sm:px-4"
+            >
+              Admin login
+            </Link>
+          )}
+
           {session ? (
             <details className="group relative">
               <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-white/30 px-3 py-2 text-sm font-semibold text-white transition hover:border-yellow-400 hover:text-yellow-400 sm:px-4 [&::-webkit-details-marker]:hidden">
@@ -75,6 +85,14 @@ export function Navbar() {
               </summary>
 
               <div className="absolute right-0 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="block px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-100"
+                  >
+                    Admin dashboard
+                  </Link>
+                )}
                 <Link
                   href="/account"
                   className="block px-4 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100"

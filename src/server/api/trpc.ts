@@ -144,27 +144,18 @@ export const protectedProcedure = t.procedure
  *
  * Builds on `protectedProcedure` with a role check. This is the real gate for
  * admin data: `src/middleware.ts` only sees the session cookie, so it cannot
- * know the role.
+ * know the role. Requires an active ADMIN; there is no preview flag, so
+ * nothing can switch this off.
  *
  * @see https://trpc.io/docs/procedures
  */
-
-const devAdminPreview =
-  process.env.NODE_ENV !== "production" &&
-  process.env.DEV_ADMIN_PREVIEW === "true";
-
-export const adminProcedure = t.procedure
-  .use(timingMiddleware)
-  .use(({ ctx, next }) => {
-    if (!devAdminPreview) {
-      const user = ctx.session?.user;
-      if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
-      if (user.role !== "ADMIN" || !user.isActive) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-    }
-    return next();
-  });
+export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  const { role, isActive } = ctx.session.user;
+  if (role !== "ADMIN" || !isActive) {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+  return next();
+});
 
 /**
  * Throws the seat-conflict error the booking flow expects (SPEC 17). The
