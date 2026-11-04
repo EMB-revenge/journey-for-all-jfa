@@ -9,7 +9,7 @@ import { authClient } from "~/server/better-auth/client";
 
 export function Navbar() {
   const router = useRouter();
-  const { session, isPending } = useAuth();
+  const { session } = useAuth();
 
   const links = [
     { label: "Book a trip", href: "/" },
@@ -54,9 +54,7 @@ export function Navbar() {
         </ul>
 
         <div className="flex items-center gap-3">
-          {isPending ? (
-            <span className="h-9 w-24 rounded-xl bg-white/10" />
-          ) : session ? (
+          {session ? (
             <details className="group relative">
               <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-white/30 px-3 py-2 text-sm font-semibold text-white transition hover:border-yellow-400 hover:text-yellow-400 sm:px-4 [&::-webkit-details-marker]:hidden">
                 <span className="max-w-22 truncate sm:max-w-56">

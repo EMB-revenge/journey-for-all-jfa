@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { fieldErrors, loginSchema } from "~/lib/schemas";
@@ -11,8 +10,6 @@ const fieldClass =
   "w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-base text-neutral-900 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40 focus:outline-none";
 
 export function LoginForm({ redirectTo }: { redirectTo?: string }) {
-  const router = useRouter();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -38,8 +35,9 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
         return;
       }
 
-      router.push(redirectTo ?? "/");
-      router.refresh();
+      // Full reload: the client session store can stay pending after an
+      // in-router navigation, which leaves the navbar stuck on its skeleton.
+      window.location.assign(redirectTo ?? "/");
     } catch {
       setFormError(
         "Could not reach the server. Check your connection and try again.",
