@@ -278,7 +278,7 @@ export const adminRouter = createTRPCRouter({
   setUserActive: adminProcedure
     .input(z.object({ id: z.string(), isActive: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      if (input.id === ctx.session.user.id) {
+      if (input.id === ctx.session?.user.id) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "You can't deactivate your own account.",

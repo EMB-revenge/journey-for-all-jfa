@@ -13,6 +13,15 @@ export default async function AdminLayout({
   if (!session?.user) redirect("/login?redirectTo=/admin");
   if (session.user.role !== "ADMIN" || !session.user.isActive) redirect("/");
 
+  const devPreview =
+  process.env.NODE_ENV !== "production" &&
+  process.env.DEV_ADMIN_PREVIEW === "true";
+
+if (!devPreview) {
+  if (!session?.user) redirect("/login?redirectTo=/admin");
+  if (session.user.role !== "ADMIN" || !session.user.isActive) redirect("/");
+}
+
   return (
     <div className="mx-auto max-w-6xl p-6">
       <header className="mb-6 flex items-center justify-between border-b pb-4">

@@ -31,15 +31,22 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
     setErrors({});
     setSubmitting(true);
 
-    const { error } = await authClient.signIn.email(parsed.data);
-    if (error) {
-      setFormError(error.message ?? "Could not sign in. Check your details.");
-      setSubmitting(false);
-      return;
-    }
+    try {
+      const { error } = await authClient.signIn.email(parsed.data);
+      if (error) {
+        setFormError(error.message ?? "Could not sign in. Check your details.");
+        return;
+      }
 
-    router.push(redirectTo ?? "/");
-    router.refresh();
+      router.push(redirectTo ?? "/");
+      router.refresh();
+    } catch {
+      setFormError(
+        "Could not reach the server. Check your connection and try again.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (

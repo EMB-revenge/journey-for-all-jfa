@@ -40,22 +40,29 @@ export function RegisterForm() {
     setErrors({});
     setSubmitting(true);
 
-    const { error } = await authClient.signUp.email({
-      name: parsed.data.name,
-      email: parsed.data.email,
-      phone: parsed.data.phone,
-      password: parsed.data.password,
-    });
-    if (error) {
-      setFormError(
-        error.message ?? "Could not create the account. Try another email.",
-      );
-      setSubmitting(false);
-      return;
-    }
+    try {
+      const { error } = await authClient.signUp.email({
+        name: parsed.data.name,
+        email: parsed.data.email,
+        phone: parsed.data.phone,
+        password: parsed.data.password,
+      });
+      if (error) {
+        setFormError(
+          error.message ?? "Could not create the account. Try another email.",
+        );
+        return;
+      }
 
-    router.push("/");
-    router.refresh();
+      router.push("/");
+      router.refresh();
+    } catch {
+      setFormError(
+        "Could not reach the server. Check your connection and try again.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (

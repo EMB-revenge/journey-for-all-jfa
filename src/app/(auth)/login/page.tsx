@@ -1,6 +1,6 @@
+import Link from "next/link";
 import { type Metadata } from "next";
 import { redirect } from "next/navigation";
-
 import { LoginForm } from "~/app/_components/auth/login-form";
 import { getSession } from "~/server/better-auth/server";
 
@@ -20,5 +20,17 @@ export default async function LoginPage({
 
   if (await getSession()) redirect(redirectTo ?? "/");
 
-  return <LoginForm redirectTo={redirectTo} />;
+  return (
+    <>
+      <LoginForm redirectTo={redirectTo} />
+      <div className="mt-4 text-center">
+        <Link
+          href="/login?redirectTo=/admin"
+          className="inline-block rounded border px-4 py-2 text-sm"
+        >
+          Admin login
+        </Link>
+      </div>
+    </>
+  );
 }
