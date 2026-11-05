@@ -123,6 +123,9 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  * If you want a query or mutation to ONLY be accessible to logged in users, use this. It verifies
  * the session is valid and guarantees `ctx.session.user` is not null.
  *
+ * Deactivated accounts are rejected here too, so a leftover session can't
+ * keep calling the API after an admin deactivates the user.
+ *
  * @see https://trpc.io/docs/procedures
  */
 export const protectedProcedure = t.procedure
@@ -130,6 +133,12 @@ export const protectedProcedure = t.procedure
   .use(({ ctx, next }) => {
     if (!ctx.session?.user) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+    if (!ctx.session.user.isActive) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "This account has been deactivated.",
+      });
     }
     return next({
       ctx: {

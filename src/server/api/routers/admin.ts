@@ -293,26 +293,29 @@ export const adminRouter = createTRPCRouter({
     ),
 
   setUserActive: adminProcedure
-    .input(z.object({ id: z.string(), isActive: z.boolean() }))
-    .mutation(async ({ ctx, input }) => {
-      if (input.id === ctx.session.user.id) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "You can't deactivate your own account.",
-        });
-      }
-
-      await ctx.db.$transaction(async (tx) => {
-        await tx.user.update({
-          where: { id: input.id },
-          data: { isActive: input.isActive },
-        });
-        // Kick them out right away instead of waiting for the session to expire.
-        if (!input.isActive) {
-          await tx.session.deleteMany({ where: { userId: input.id } });
-        }
+  .input(z.object({ id: z.string(), isActive: z.boolean() }))
+  .mutation(async ({ ctx, input }) => {
+    // Don't let an admin lock themselves out
+    if (!input.isActive && input.id === ctx.session.user.id) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "You can't deactivate your own account.",
       });
-    }),
+    }
+
+    const [user] = await ctx.db.$transaction([
+      ctx.db.user.update({
+        where: { id: input.id },
+        data: { isActive: input.isActive },
+      }),
+      // Only wipe sessions when deactivating
+      ...(!input.isActive
+        ? [ctx.db.session.deleteMany({ where: { userId: input.id } })]
+        : []),
+    ]);
+
+    return user;
+  }),
     // ---------------------------------------------------------------------
   // Feedback
   // ---------------------------------------------------------------------
