@@ -101,7 +101,7 @@ export function AdminNav() {
   const pathname = usePathname();
 
   return (
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <ul className="flex flex-nowrap gap-2">
       {items.map((item) => {
         const active =
           item.href === "/admin"
@@ -109,18 +109,18 @@ export function AdminNav() {
             : pathname.startsWith(item.href);
 
         return (
-          <li key={item.href}>
+          <li key={item.href} className="min-w-0 flex-1">
             <Link
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition ${
+              className={`flex h-full flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[11px] font-semibold transition sm:flex-row sm:gap-2 sm:px-3 sm:py-3 sm:text-sm ${
                 active
                   ? "bg-yellow-400 text-charcoal shadow-lg"
                   : "border border-white/25 bg-white/10 text-white backdrop-blur-sm hover:border-yellow-400 hover:text-yellow-400"
               }`}
             >
               {item.icon}
-              {item.label}
+              <span className="max-w-full truncate">{item.label}</span>
             </Link>
           </li>
         );
