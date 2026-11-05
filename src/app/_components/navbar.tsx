@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { useAuth } from "~/context/AuthContext";
 import { authClient } from "~/server/better-auth/client";
@@ -10,6 +11,7 @@ import { authClient } from "~/server/better-auth/client";
 export function Navbar() {
   const router = useRouter();
   const { session } = useAuth();
+  const [showAdminOnly, setShowAdminOnly] = useState(false);
 
   const isAdmin = session?.user.role === "ADMIN";
 
@@ -18,11 +20,40 @@ export function Navbar() {
     { label: "My bookings", href: "/my-bookings" },
   ];
 
+  // The admin layout sends signed-in non-admins to /?adminOnly=1. Show the
+  // popup once, then clean the URL so a refresh doesn't show it again.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("adminOnly") === "1") {
+      setShowAdminOnly(true);
+      params.delete("adminOnly");
+      const qs = params.toString();
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + (qs ? `?${qs}` : ""),
+      );
+    }
+  }, []);
+
+  // Close the popup with the Escape key.
+  useEffect(() => {
+    if (!showAdminOnly) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowAdminOnly(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showAdminOnly]);
+
   async function handleSignOut() {
     await authClient.signOut();
     router.push("/");
     router.refresh();
   }
+
+  const adminBtnClass =
+    "rounded-xl border border-yellow-400 px-3 py-2 text-sm font-semibold text-yellow-400 transition hover:bg-yellow-400 hover:text-charcoal sm:px-4";
 
   return (
     <header className="bg-charcoal">
@@ -55,14 +86,21 @@ export function Navbar() {
         </ul>
 
         <div className="flex items-center gap-3">
-          {!isAdmin && (
-            <Link
-              href="/login?redirectTo=/admin"
-              className="rounded-xl border border-yellow-400 px-3 py-2 text-sm font-semibold text-yellow-400 transition hover:bg-yellow-400 hover:text-charcoal sm:px-4"
-            >
-              Admin login
-            </Link>
-          )}
+          {/* Signed-in passengers get the popup. Signed-out visitors go to the login page. */}
+          {!isAdmin &&
+            (session ? (
+              <button
+                type="button"
+                onClick={() => setShowAdminOnly(true)}
+                className={adminBtnClass}
+              >
+                Admin login
+              </button>
+            ) : (
+              <Link href="/login?redirectTo=/admin" className={adminBtnClass}>
+                Admin login
+              </Link>
+            ))}
 
           {session ? (
             <details className="group relative">
@@ -124,6 +162,55 @@ export function Navbar() {
           )}
         </div>
       </nav>
+
+      {showAdminOnly && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/70 px-4"
+          onClick={() => setShowAdminOnly(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-only-title"
+            className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100 text-yellow-700">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-6 w-6"
+              >
+                <rect x="5" y="11" width="14" height="9" rx="2" />
+                <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+              </svg>
+            </div>
+            <h2
+              id="admin-only-title"
+              className="text-lg font-bold text-charcoal"
+            >
+              Admin access only
+            </h2>
+            <p className="mt-2 text-sm text-neutral-600">
+              This area is for admins only. Your account doesn&apos;t have
+              admin access.
+            </p>
+            <button
+              type="button"
+              autoFocus
+              onClick={() => setShowAdminOnly(false)}
+              className="mt-5 w-full rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-charcoal transition hover:bg-yellow-300"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
