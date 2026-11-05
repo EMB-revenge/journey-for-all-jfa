@@ -121,7 +121,8 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  * Protected (authenticated) procedure
  *
  * If you want a query or mutation to ONLY be accessible to logged in users, use this. It verifies
- * the session is valid and guarantees `ctx.session.user` is not null.
+ * the session is valid and guarantees `ctx.session.user` is not null. Inactive accounts are
+ * rejected too, so a session that outlived a deactivation cannot call anything.
  *
  * @see https://trpc.io/docs/procedures
  */
@@ -130,6 +131,12 @@ export const protectedProcedure = t.procedure
   .use(({ ctx, next }) => {
     if (!ctx.session?.user) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+    if (!ctx.session.user.isActive) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "This account has been deactivated.",
+      });
     }
     return next({
       ctx: {
@@ -144,12 +151,14 @@ export const protectedProcedure = t.procedure
  *
  * Builds on `protectedProcedure` with a role check. This is the real gate for
  * admin data: `src/middleware.ts` only sees the session cookie, so it cannot
- * know the role.
+ * know the role. Requires an active ADMIN; there is no preview flag, so
+ * nothing can switch this off.
  *
  * @see https://trpc.io/docs/procedures
  */
 export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.session.user.role !== "ADMIN") {
+  const { role, isActive } = ctx.session.user;
+  if (role !== "ADMIN" || !isActive) {
     throw new TRPCError({ code: "FORBIDDEN" });
   }
   return next();

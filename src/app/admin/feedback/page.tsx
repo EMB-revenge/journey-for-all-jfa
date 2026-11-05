@@ -1,90 +1,115 @@
-import { TRPCError } from "@trpc/server";
-import { type Metadata } from "next";
-import { redirect } from "next/navigation";
+"use client";
 
-import { ResolveFeedbackButton } from "~/app/_components/admin/resolve-feedback-button";
-import { Navbar } from "~/app/_components/navbar";
+import { useState } from "react";
+
 import { formatBookedAt } from "~/app/_lib/format";
-import { api } from "~/trpc/server";
+import {
+  Badge,
+  btnLink,
+  EmptyRow,
+  PageHeader,
+  row,
+  td,
+  th,
+  TableCard,
+} from "~/app/admin/_components/ui";
+import { api } from "~/trpc/react";
 
-export const metadata: Metadata = { title: "Feedback | JFA Transit admin" };
+const filters = [
+  { label: "Open", value: "open" },
+  { label: "Resolved", value: "resolved" },
+  { label: "All", value: "all" },
+] as const;
 
-export default async function AdminFeedbackPage() {
-  let messages;
-  try {
-    messages = await api.admin.feedback.list();
-  } catch (error) {
-    if (error instanceof TRPCError) {
-      if (error.code === "UNAUTHORIZED") {
-        redirect(`/login?redirectTo=${encodeURIComponent("/admin/feedback")}`);
-      }
-      if (error.code === "FORBIDDEN") redirect("/");
-    }
-    throw error;
-  }
+export default function AdminFeedback() {
+  const [filter, setFilter] = useState<"open" | "resolved" | "all">("open");
+  const utils = api.useUtils();
 
-  const open = messages.filter((message) => message.resolvedAt === null).length;
+  const feedback = api.admin.listFeedback.useQuery({ filter });
+  const setResolved = api.admin.setFeedbackResolved.useMutation({
+    onSuccess: async () => {
+      await utils.admin.listFeedback.invalidate();
+      await utils.admin.stats.invalidate();
+    },
+    onError: (e) => alert(e.message),
+  });
 
   return (
-    <>
-      <Navbar />
-      <main className="mx-auto max-w-3xl px-6 py-10">
-        <p className="text-sm font-semibold tracking-[0.25em] text-neutral-500 uppercase">
-          Admin
-        </p>
-        <h1 className="mt-2 text-3xl font-bold text-neutral-900">
-          Contact tickets
-        </h1>
-        <p className="mt-2 text-neutral-600">
-          {open === 0
-            ? "Nothing open right now."
-            : `${open} open ${open === 1 ? "ticket" : "tickets"} to answer.`}
-        </p>
+    <div>
+      <PageHeader title="Feedback">
+        <div className="flex gap-2">
+          {filters.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => setFilter(f.value)}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                filter === f.value
+                  ? "text-charcoal bg-yellow-400"
+                  : "border border-neutral-300 text-neutral-700 hover:border-yellow-400"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </PageHeader>
 
-        {messages.length === 0 ? (
-          <div className="mt-8 rounded-2xl border border-dashed border-neutral-300 px-6 py-12 text-center text-neutral-600">
-            No tickets yet. Messages sent from the contact page land here.
-          </div>
-        ) : (
-          <ul className="mt-8 space-y-4">
-            {messages.map((message) => (
-              <li
-                key={message.id}
-                className={`rounded-2xl border p-6 ${
-                  message.resolvedAt
-                    ? "border-neutral-200 bg-neutral-50"
-                    : "border-neutral-200 bg-white"
-                }`}
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="font-semibold text-neutral-900">
-                    {message.name}
-                  </p>
-                  <p className="text-sm text-neutral-500">
-                    {formatBookedAt(message.createdAt)}
-                  </p>
+      <TableCard>
+        <thead>
+          <tr>
+            <th className={th}>From</th>
+            <th className={th}>Message</th>
+            <th className={th}>Received</th>
+            <th className={th}>Status</th>
+            <th className={th} />
+          </tr>
+        </thead>
+        <tbody>
+          {feedback.data?.map((f) => (
+            <tr key={f.id} className={`${row} align-top`}>
+              <td className={td}>
+                <span className="text-charcoal font-semibold">{f.name}</span>
+                <div className="text-xs">
+                  <a
+                    href={`mailto:${f.email}`}
+                    className="text-neutral-500 underline hover:text-yellow-600"
+                  >
+                    {f.email}
+                  </a>
                 </div>
-                <p className="text-sm break-all text-neutral-500">
-                  {message.email}
-                </p>
-                <p className="mt-3 whitespace-pre-line text-neutral-800">
-                  {message.message}
-                </p>
+              </td>
+              <td className={`${td} max-w-md whitespace-pre-wrap`}>
+                {f.message}
+              </td>
+              <td className={`${td} whitespace-nowrap`}>
+                {formatBookedAt(f.createdAt)}
+              </td>
+              <td className={td}>
+                <Badge tone={f.isResolved ? "green" : "yellow"}>
+                  {f.isResolved ? "Resolved" : "Open"}
+                </Badge>
+              </td>
+              <td className={`${td} text-right`}>
+                <button
+                  className={btnLink}
+                  disabled={setResolved.isPending}
+                  onClick={() =>
+                    setResolved.mutate({ id: f.id, resolved: !f.isResolved })
+                  }
+                >
+                  {f.isResolved ? "Reopen" : "Mark resolved"}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </TableCard>
 
-                <div className="mt-4">
-                  {message.resolvedAt ? (
-                    <p className="text-sm font-semibold text-green-700">
-                      Handled {formatBookedAt(message.resolvedAt)}
-                    </p>
-                  ) : (
-                    <ResolveFeedbackButton id={message.id} />
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </main>
-    </>
+      {feedback.isLoading && <EmptyRow text="Loading…" />}
+      {feedback.data?.length === 0 && (
+        <EmptyRow text="No feedback in this view." />
+      )}
+    </div>
   );
 }

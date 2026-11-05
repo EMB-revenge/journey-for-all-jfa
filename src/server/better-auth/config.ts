@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 
 import { db } from "~/server/db";
@@ -33,6 +34,30 @@ export const auth = betterAuth({
       phone: {
         type: "string",
         required: false,
+      },
+    },
+  },
+  /**
+   * Block deactivated users from getting a session. This runs on every
+   * sign-in, however it happens.
+   */
+  databaseHooks: {
+    session: {
+      create: {
+        before: async (session) => {
+          const user = await db.user.findUnique({
+            where: { id: session.userId },
+            select: { isActive: true },
+          });
+
+          if (!user?.isActive) {
+            throw new APIError("FORBIDDEN", {
+              message: "This account has been deactivated.",
+            });
+          }
+
+          return { data: session };
+        },
       },
     },
   },
