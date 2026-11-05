@@ -94,7 +94,7 @@ export function Navbar() {
                 onClick={() => setShowAdminOnly(true)}
                 className={adminBtnClass}
               >
-                Admin login
+                Admin
               </button>
             ) : (
               <Link href="/login?redirectTo=/admin" className={adminBtnClass}>
