@@ -98,7 +98,7 @@ export function Navbar() {
               </button>
             ) : (
               <Link href="/login?redirectTo=/admin" className={adminBtnClass}>
-                Admin login
+                Admin
               </Link>
             ))}
 
