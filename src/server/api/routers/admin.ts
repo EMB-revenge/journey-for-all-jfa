@@ -1,6 +1,10 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { isUniqueViolation } from "~/lib/errors";
+import { isDeparted, todayInManila } from "~/lib/dates";
+import { formatDuration } from "~/app/_lib/format";
+import { pageOf } from "~/lib/pagination";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 
 const PAGE_SIZE = 20;
@@ -9,23 +13,20 @@ const PAGE_SIZE = 20;
 const dateStr = (d: Date) => d.toISOString().slice(0, 10);
 const timeStr = (d: Date) => d.toISOString().slice(11, 16);
 
-// Today's date in the Philippines, as UTC midnight (matches how @db.Date is read).
-const todayPH = () =>
-  new Date(
-    new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }),
-  );
+// @db.Date is read as UTC midnight, so start from Manila's calendar day.
+const startOfToday = () => new Date(todayInManila());
 
 export const adminRouter = createTRPCRouter({
   // ---------------------------------------------------------------------
   // Dashboard
   // ---------------------------------------------------------------------
-    stats: adminProcedure.query(async ({ ctx }) => {
+  stats: adminProcedure.query(async ({ ctx }) => {
     const [users, bookings, upcomingTrips, revenue, openFeedback] =
       await Promise.all([
         ctx.db.user.count(),
         ctx.db.booking.count({ where: { status: "CONFIRMED" } }),
         ctx.db.schedule.count({
-          where: { travelDate: { gte: todayPH() }, isCancelled: false },
+          where: { travelDate: { gte: startOfToday() }, isCancelled: false },
         }),
         ctx.db.booking.aggregate({
           _sum: { totalAmount: true },
@@ -79,6 +80,7 @@ export const adminRouter = createTRPCRouter({
           .min(1)
           .max(20)
           .transform((s) => s.toUpperCase()),
+        // shortcut: fixed seat sizes until bus models carry their own capacity.
         capacity: z.union([z.literal(40), z.literal(50)]),
         busTypeId: z.string(),
       }),
@@ -97,21 +99,32 @@ export const adminRouter = createTRPCRouter({
       if (!type) throw new TRPCError({ code: "NOT_FOUND" });
 
       // Seats 1..capacity are created with the bus, in one atomic write.
-      await ctx.db.bus.create({
-        data: {
-          name: input.name,
-          plateNumber: input.plateNumber,
-          capacity: input.capacity,
-          busTypeId: input.busTypeId,
-          seats: {
-            createMany: {
-              data: Array.from({ length: input.capacity }, (_, i) => ({
-                seatNumber: i + 1,
-              })),
+      try {
+        await ctx.db.bus.create({
+          data: {
+            name: input.name,
+            plateNumber: input.plateNumber,
+            capacity: input.capacity,
+            busTypeId: input.busTypeId,
+            seats: {
+              createMany: {
+                data: Array.from({ length: input.capacity }, (_, i) => ({
+                  seatNumber: i + 1,
+                })),
+              },
             },
           },
-        },
-      });
+        });
+      } catch (error) {
+        // The pre-check can lose a race; the unique constraint is the real gate.
+        if (isUniqueViolation(error)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "A bus with that plate number already exists.",
+          });
+        }
+        throw error;
+      }
     }),
 
   // ---------------------------------------------------------------------
@@ -129,7 +142,7 @@ export const adminRouter = createTRPCRouter({
       id: r.id,
       origin: r.originCity.name,
       destination: r.destCity.name,
-      duration: `${Math.floor(r.durationMinutes / 60)}h ${r.durationMinutes % 60}m`,
+      duration: formatDuration(r.durationMinutes),
       fare: r.baseFare.toFixed(2),
       isActive: r.isActive,
     }));
@@ -142,8 +155,12 @@ export const adminRouter = createTRPCRouter({
     .input(z.object({ includePast: z.boolean().default(false) }))
     .query(async ({ ctx, input }) => {
       const rows = await ctx.db.schedule.findMany({
-        where: input.includePast ? {} : { travelDate: { gte: todayPH() } },
-        orderBy: [{ travelDate: "asc" }, { departureTime: "asc" }],
+        where: input.includePast ? {} : { travelDate: { gte: startOfToday() } },
+        // Newest first when past trips are included, so `take` keeps the
+        // future and the recent past instead of the oldest 200 trips.
+        orderBy: input.includePast
+          ? [{ travelDate: "desc" }, { departureTime: "desc" }]
+          : [{ travelDate: "asc" }, { departureTime: "asc" }],
         take: 200,
         include: {
           bus: { select: { name: true, plateNumber: true } },
@@ -191,7 +208,9 @@ export const adminRouter = createTRPCRouter({
                 },
               },
               {
-                user: { email: { contains: input.search, mode: "insensitive" } },
+                user: {
+                  email: { contains: input.search, mode: "insensitive" },
+                },
               },
               {
                 user: { name: { contains: input.search, mode: "insensitive" } },
@@ -199,7 +218,7 @@ export const adminRouter = createTRPCRouter({
             ],
           }),
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: PAGE_SIZE + 1,
         ...(input.cursor && { cursor: { id: input.cursor }, skip: 1 }),
         include: {
@@ -208,6 +227,7 @@ export const adminRouter = createTRPCRouter({
           schedule: {
             select: {
               travelDate: true,
+              departureTime: true,
               route: {
                 select: {
                   originCity: { select: { name: true } },
@@ -219,11 +239,11 @@ export const adminRouter = createTRPCRouter({
         },
       });
 
-      const nextCursor = rows.length > PAGE_SIZE ? rows.pop()!.id : undefined;
+      const page = pageOf(rows, PAGE_SIZE);
 
       return {
-        nextCursor,
-        items: rows.map((b) => ({
+        nextCursor: page.nextCursor,
+        items: page.items.map((b) => ({
           id: b.id,
           reference: b.bookingReference,
           accountName: b.user.name,
@@ -231,10 +251,13 @@ export const adminRouter = createTRPCRouter({
           route: `${b.schedule.route.originCity.name} → ${b.schedule.route.destCity.name}`,
           date: dateStr(b.schedule.travelDate),
           // Cancelled bookings have no seat rows left, so this is empty for them.
-          seats: b.seats
-            .map((s) => s.seat.seatNumber)
-            .sort((a, c) => a - c),
+          seats: b.seats.map((s) => s.seat.seatNumber).sort((a, c) => a - c),
           status: b.status,
+          // The table hides Cancel where the server would refuse anyway.
+          canCancel:
+            b.status === "CONFIRMED" &&
+            !b.checkedInAt &&
+            !isDeparted(b.schedule.travelDate, b.schedule.departureTime),
         })),
       };
     }),
@@ -244,12 +267,31 @@ export const adminRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const booking = await ctx.db.booking.findUnique({
         where: { id: input.id },
+        select: {
+          status: true,
+          checkedInAt: true,
+          schedule: { select: { travelDate: true, departureTime: true } },
+        },
       });
       if (!booking) throw new TRPCError({ code: "NOT_FOUND" });
-      if (booking.status === "CANCELLED") {
+      if (booking.status !== "CONFIRMED") {
         throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Booking is already cancelled.",
+          code: "PRECONDITION_FAILED",
+          message: "This booking can no longer be cancelled.",
+        });
+      }
+      if (booking.checkedInAt) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "This ticket was already used to board.",
+        });
+      }
+      if (
+        isDeparted(booking.schedule.travelDate, booking.schedule.departureTime)
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "This trip has already departed.",
         });
       }
 
@@ -293,30 +335,39 @@ export const adminRouter = createTRPCRouter({
     ),
 
   setUserActive: adminProcedure
-  .input(z.object({ id: z.string(), isActive: z.boolean() }))
-  .mutation(async ({ ctx, input }) => {
-    // Don't let an admin lock themselves out
-    if (!input.isActive && input.id === ctx.session.user.id) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "You can't deactivate your own account.",
-      });
-    }
+    .input(z.object({ id: z.string(), isActive: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.id === ctx.session.user.id && !input.isActive) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You can't deactivate your own account.",
+        });
+      }
 
-    const [user] = await ctx.db.$transaction([
-      ctx.db.user.update({
+      const target = await ctx.db.user.findUnique({
         where: { id: input.id },
-        data: { isActive: input.isActive },
-      }),
-      // Only wipe sessions when deactivating
-      ...(!input.isActive
-        ? [ctx.db.session.deleteMany({ where: { userId: input.id } })]
-        : []),
-    ]);
+        select: { role: true },
+      });
+      if (!target) throw new TRPCError({ code: "NOT_FOUND" });
+      if (target.role === "ADMIN") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Admin accounts can't be deactivated.",
+        });
+      }
 
-    return user;
-  }),
-    // ---------------------------------------------------------------------
+      await ctx.db.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: input.id },
+          data: { isActive: input.isActive },
+        });
+        // Kick them out right away instead of waiting for the session to expire.
+        if (!input.isActive) {
+          await tx.session.deleteMany({ where: { userId: input.id } });
+        }
+      });
+    }),
+  // ---------------------------------------------------------------------
   // Feedback
   // ---------------------------------------------------------------------
   listFeedback: adminProcedure
@@ -349,9 +400,10 @@ export const adminRouter = createTRPCRouter({
   setFeedbackResolved: adminProcedure
     .input(z.object({ id: z.string(), resolved: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.feedback.update({
+      const { count } = await ctx.db.feedback.updateMany({
         where: { id: input.id },
         data: { resolvedAt: input.resolved ? new Date() : null },
       });
+      if (count === 0) throw new TRPCError({ code: "NOT_FOUND" });
     }),
 });

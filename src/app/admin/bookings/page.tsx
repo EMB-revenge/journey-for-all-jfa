@@ -58,26 +58,30 @@ export default function AdminBookings() {
             <tr key={b.id} className={row}>
               <td className={`${td} font-mono`}>{b.reference}</td>
               <td className={td}>
-                <span className="font-semibold text-charcoal">
+                <span className="text-charcoal font-semibold">
                   {b.accountName}
                 </span>
                 <div className="text-xs text-neutral-500">{b.accountEmail}</div>
               </td>
               <td className={td}>{b.route}</td>
               <td className={td}>{b.date}</td>
-              <td className={td}>{b.seats.length ? b.seats.join(", ") : "—"}</td>
+              <td className={td}>
+                {b.seats.length ? b.seats.join(", ") : "—"}
+              </td>
               <td className={td}>
                 <Badge tone={b.status === "CANCELLED" ? "red" : "green"}>
                   {b.status === "CANCELLED" ? "Cancelled" : "Confirmed"}
                 </Badge>
               </td>
               <td className={`${td} text-right`}>
-                {b.status === "CONFIRMED" && (
+                {b.canCancel && (
                   <button
                     className={btnDanger}
                     disabled={cancel.isPending}
                     onClick={() => {
-                      if (confirm(`Cancel ${b.reference}? This frees its seats.`)) {
+                      if (
+                        confirm(`Cancel ${b.reference}? This frees its seats.`)
+                      ) {
                         cancel.mutate({ id: b.id });
                       }
                     }}

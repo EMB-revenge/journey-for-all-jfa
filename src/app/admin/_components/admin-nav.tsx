@@ -101,7 +101,7 @@ export function AdminNav() {
   const pathname = usePathname();
 
   return (
-    <ul className="flex flex-nowrap gap-2">
+    <ul className="grid grid-cols-4 gap-2 sm:flex sm:flex-nowrap">
       {items.map((item) => {
         const active =
           item.href === "/admin"
@@ -115,7 +115,7 @@ export function AdminNav() {
               aria-current={active ? "page" : undefined}
               className={`flex h-full flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[11px] font-semibold transition sm:flex-row sm:gap-2 sm:px-3 sm:py-3 sm:text-sm ${
                 active
-                  ? "bg-yellow-400 text-charcoal shadow-lg"
+                  ? "text-charcoal bg-yellow-400 shadow-lg"
                   : "border border-white/25 bg-white/10 text-white backdrop-blur-sm hover:border-yellow-400 hover:text-yellow-400"
               }`}
             >

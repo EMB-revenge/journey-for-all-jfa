@@ -50,7 +50,7 @@ export default function AdminUsers() {
         <tbody>
           {users.data?.map((u) => (
             <tr key={u.id} className={row}>
-              <td className={`${td} font-semibold text-charcoal`}>{u.name}</td>
+              <td className={`${td} text-charcoal font-semibold`}>{u.name}</td>
               <td className={td}>{u.email}</td>
               <td className={td}>
                 <Badge tone={u.role === "ADMIN" ? "yellow" : "gray"}>
@@ -58,29 +58,39 @@ export default function AdminUsers() {
                 </Badge>
               </td>
               <td className={td}>{u._count.bookings}</td>
-              <td className={td}>{u.createdAt.toISOString().slice(0, 10)}</td>
+              <td className={td}>
+                {u.createdAt.toLocaleDateString("en-PH", {
+                  timeZone: "Asia/Manila",
+                })}
+              </td>
               <td className={td}>
                 <Badge tone={u.isActive ? "green" : "red"}>
                   {u.isActive ? "Active" : "Deactivated"}
                 </Badge>
               </td>
               <td className={`${td} text-right`}>
-                <button
-                  className={btnLink}
-                  disabled={setActive.isPending}
-                  onClick={() => {
-                    const next = !u.isActive;
-                    if (
-                      !next &&
-                      !confirm(`Deactivate ${u.email}? They will be signed out.`)
-                    ) {
-                      return;
-                    }
-                    setActive.mutate({ id: u.id, isActive: next });
-                  }}
-                >
-                  {u.isActive ? "Deactivate" : "Reactivate"}
-                </button>
+                {u.role === "ADMIN" ? (
+                  <span className="text-xs text-neutral-400">Admin</span>
+                ) : (
+                  <button
+                    className={btnLink}
+                    disabled={setActive.isPending}
+                    onClick={() => {
+                      const next = !u.isActive;
+                      if (
+                        !next &&
+                        !confirm(
+                          `Deactivate ${u.email}? They will be signed out.`,
+                        )
+                      ) {
+                        return;
+                      }
+                      setActive.mutate({ id: u.id, isActive: next });
+                    }}
+                  >
+                    {u.isActive ? "Deactivate" : "Reactivate"}
+                  </button>
+                )}
               </td>
             </tr>
           ))}
@@ -89,6 +99,11 @@ export default function AdminUsers() {
 
       {users.isLoading && <EmptyRow text="Loading…" />}
       {users.data?.length === 0 && <EmptyRow text="No users found." />}
+      {users.data?.length === 100 && (
+        <p className="mt-2 text-center text-sm text-neutral-500">
+          Showing the newest 100. Search to narrow.
+        </p>
+      )}
     </div>
   );
 }

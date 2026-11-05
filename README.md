@@ -1,6 +1,6 @@
 # Journey For All (JFA)
 
-One-way intercity bus booking and ticketing. Passengers search a route, pick seats, and get a digital ticket. Admins manage cities, buses, routes, schedules, and read every booking.
+One-way intercity bus booking and ticketing. Passengers search a route, pick seats, and get a digital ticket. Admins work from `/admin`: dashboard, buses, routes, schedules, bookings, users, and contact messages.
 
 Class project for the web development module: React with Next.js App Router, tRPC, Prisma, PostgreSQL, Better Auth, Zod.
 
@@ -83,7 +83,7 @@ src/middleware.ts admin route guard
 docs/             spec, PRD, brief, implementation plan
 ```
 
-Not built yet: booking confirm and ticket, `/my-bookings`, admin CRUD screens. Components and pages for those stay hidden until then.
+Not built yet: `/admin/cities`, bus edit/deactivate, and route and schedule create/edit/deactivate. The admin dashboard, buses (list and create), routes, schedules, bookings (search, paging, cancel), users (deactivate passengers; admins are protected), and feedback inbox are in.
 
 ## Docs
 

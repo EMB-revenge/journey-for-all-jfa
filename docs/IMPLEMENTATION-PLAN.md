@@ -128,9 +128,11 @@ Landed: passenger details, summary, the confirm transaction, the ticket, and My 
 4. Buses, routes, and cities deactivate with `isActive = false` instead of disappearing
 5. `admin.booking.list`: read-only, filter by date and route, no edit, no delete
 
-The navbar's "Admin" link was removed until `/admin` exists; restore it when this phase lands.
+**Landed so far:** the dashboard at `/admin`, a one-row admin nav, buses (list and create), routes, schedules, bookings with search, cursor paging, and a guarded cancel, users with passenger deactivation, feedback with Open / Resolved / All filters and reopen, the active-admin gate, and the non-admin "Admin access only" popup. Admin accounts cannot be deactivated. The navbar's "Admin" shortcut is back: a signed-out visitor goes to `/login?redirectTo=/admin`, and a signed-in passenger gets the popup.
 
-**Done when:** an admin adds a city, bus, route, and schedule, and a passenger can search and book that trip.
+**Still pending:** `/admin/cities`, bus edit and deactivate, route and schedule create/edit/deactivate, and date/route filters plus a check-in action on the bookings table.
+
+**Done when (after the pending work):** an admin adds a city, bus, route, and schedule, and a passenger can search and book that trip.
 
 ---
 

@@ -357,24 +357,35 @@ Auth lives in Better Auth's own routes. Everything below is a procedure. All inp
 | `cancellation.cancel` | protected | `{ id }` | `{ id }` | `NOT_FOUND`, `PRECONDITION_FAILED` for a booking that is not confirmed, already boarded, or already departed |
 | `booking.verify` | public | `{ code }` | ticket check: status, route, date, masked passengers, `checkedInAt` | `NOT_FOUND` |
 | `booking.checkIn` | admin | `{ code }` | `{ checkedInAt, alreadyCheckedIn }` | `NOT_FOUND`, `PRECONDITION_FAILED`, `CONFLICT` |
-| `admin.city.*` | admin | CRUD | | `CONFLICT` on duplicate name |
-| `admin.bus.*` | admin | CRUD, creates seats on create | | `CONFLICT` on duplicate plate |
-| `admin.route.*` | admin | CRUD | | `CONFLICT` on duplicate origin/dest |
-| `admin.schedule.*` | admin | CRUD, no fare field | | `CONFLICT` on duplicate bus/date/time |
-| `admin.booking.list` | admin | optional date and route filters | all bookings | |
+| `admin.stats` | admin | none | user, booking, upcoming trip, revenue, and open feedback counts | |
+| `admin.listBuses` | admin | none | fleet rows | |
+| `admin.listBusTypes` | admin | none | bus types | |
+| `admin.createBus` | admin | `{ name, plateNumber, capacity, busTypeId }` | none, creates seats `1..capacity` | `BAD_REQUEST` on duplicate plate |
+| `admin.listRoutes` | admin | none | route rows | |
+| `admin.listSchedules` | admin | `{ includePast? }` | up to 200 trips | |
+| `admin.listBookings` | admin | `{ cursor?, search?, status? }` | one page of bookings with seats and `canCancel` | |
+| `admin.cancelBooking` | admin | `{ id }` | none | `NOT_FOUND`, `PRECONDITION_FAILED` for a booking that is not confirmed, already boarded, or already departed |
+| `admin.listUsers` | admin | `{ search? }` | newest 100 users | |
+| `admin.setUserActive` | admin | `{ id, isActive }` | none, deletes the user's sessions on deactivate | `BAD_REQUEST` for self or an admin account |
 | `feedback.send` | public | `{ name, email, message }` | `{ id }` | `INPUT_PARSE_ERROR` |
-| `admin.feedback.list` | admin | none | contact messages, open first | |
-| `admin.feedback.resolve` | admin | `{ id }` | none | `NOT_FOUND` when already handled |
+| `admin.listFeedback` | admin | `{ filter?: "open" \| "resolved" \| "all" }` | contact messages, newest first | |
+| `admin.setFeedbackResolved` | admin | `{ id, resolved }` | none | `NOT_FOUND` |
 
-Bookings are read-only for admins, apart from check-in. Passengers cancel their own bookings through `cancellation.cancel`, which lives in its own router file. Cancelling a schedule sets `isCancelled`.
+Admins can cancel a confirmed booking that has not boarded and whose trip has not departed. Otherwise bookings stay read-only apart from check-in. Passengers cancel their own bookings through `cancellation.cancel`. Cancelling a schedule sets `isCancelled`. Admin accounts cannot be deactivated, and deactivating a passenger blocks new sessions until an admin reactivates the account.
+
+City, route, and schedule CRUD are still pending. Those pages and procedures are read-only for now.
 
 ---
 
 ## 15. Admin flow
 
-Login → sidebar (Cities | Buses | Routes | Schedules | Bookings | Contact tickets), no separate dashboard home. `/admin` redirects to the first section. Each of Cities, Buses, Routes, Schedules uses one pattern: table of records, "Add" button opens a form, Edit/Deactivate per row. Bookings is a read-only table with date/route filters and a check-in action. Contact tickets lists messages from `/contact`, open first, each with a Mark handled action.
+Login → admin layout with a dashboard at `/admin` and a nav of Dashboard | Buses | Routes | Schedules | Bookings | Users | Feedback. The dashboard shows users, confirmed bookings, upcoming trips, revenue, and open feedback, plus shortcuts to each section.
+
+Buses lists the fleet and creates a bus with seats `1..capacity`. Routes and Schedules are read-only tables for now. Bookings lists every account's bookings with search and cursor paging, and offers Cancel only where the server would allow it (confirmed, not boarded, trip not departed). Users lists the newest 100 accounts and deactivates passengers; admin rows have no toggle. Feedback filters Open / Resolved / All and toggles a message between resolved and open. A signed-in non-admin who opens `/admin` is sent to `/?adminOnly=1` and sees an "Admin access only" dialog instead of a silent redirect.
 
 Creating a bus creates its seats in the same transaction. Deleting is limited to records with no dependencies; anything referenced by a schedule or booking gets `isActive = false` or `isCancelled = true` instead.
+
+Still pending from this flow: `/admin/cities`, bus edit and deactivate, route and schedule create/edit/deactivate, and date/route filters plus a check-in action on the bookings table.
 
 ---
 
@@ -384,11 +395,11 @@ Creating a bus creates its seats in the same transaction. Deleting is limited to
 
 **Public:** `/verify/[code]` (read-only ticket check behind the QR), `/contact` (contact form; writes a `feedback` row)
 
-**Admin:** `/admin` redirects to `/admin/cities`; `/admin/cities`, `/admin/buses`, `/admin/routes`, `/admin/schedules`, `/admin/bookings`, `/admin/feedback`
+**Admin:** `/admin` is the dashboard; `/admin/buses`, `/admin/routes`, `/admin/schedules`, `/admin/bookings`, `/admin/users`, `/admin/feedback`. `/admin/cities` is still pending.
 
-- `src/app/layout.tsx` holds the shared shell, `AuthProvider`, and `BookingFlowProvider`. Admin links render only when `session.user.role === "ADMIN"`
+- `src/app/layout.tsx` holds the shared shell, `AuthProvider`, and `BookingFlowProvider`. The Admin dashboard link renders only when `session.user.role === "ADMIN"`
 - Pages that read the session or run mutations are client components. Search and results can be server components that call procedures through the server caller
-- Auth gate: the navbar carries one neutral `Sign in` action for signed-out visitors, since yellow belongs to the booking path (Search trips, Select seat, Continue, Confirm). Signed-in visitors get an account menu with Account, My bookings, and Sign out. Change password lives on `/account`, beside the name and phone fields. The write gate itself is at Continue on `/booking/seat-map`
+- Auth gate: the navbar carries a neutral `Sign in` action plus an `Admin` shortcut for signed-out visitors, since yellow belongs to the booking path (Search trips, Select seat, Continue, Confirm). A signed-in passenger who clicks `Admin` gets the admin-only dialog; opening `/admin` directly redirects to the home page with the same dialog. Signed-in visitors get an account menu with Account, My bookings, and Sign out. Change password lives on `/account`, beside the name and phone fields. The write gate itself is at Continue on `/booking/seat-map`
 - Booking flow state lives in `BookingFlowProvider` + `bookingFlowReducer`: selected schedule, passenger count, selected seats, hold expiry, per-seat passenger names. It survives the route changes between seat map, passengers, and summary
 - The hold countdown is a client timer seeded from `expiresAt`
 - Styling is Tailwind, functional. The seat map is a top view of the bus (driver and door at the front, four seats to a row with an aisle, labelled 1A to 10D) with two states: available vs occupied (held seats render as occupied)

@@ -10,7 +10,7 @@ import { authClient } from "~/server/better-auth/client";
 
 export function Navbar() {
   const router = useRouter();
-  const { session } = useAuth();
+  const { session, isPending } = useAuth();
   const [showAdminOnly, setShowAdminOnly] = useState(false);
 
   const isAdmin = session?.user.role === "ADMIN";
@@ -87,7 +87,8 @@ export function Navbar() {
 
         <div className="flex items-center gap-3">
           {/* Signed-in passengers get the popup. Signed-out visitors go to the login page. */}
-          {!isAdmin &&
+          {!isPending &&
+            !isAdmin &&
             (session ? (
               <button
                 type="button"
@@ -102,7 +103,9 @@ export function Navbar() {
               </Link>
             ))}
 
-          {session ? (
+          {isPending ? (
+            <span className="h-9 w-24 rounded-xl bg-white/10" />
+          ) : session ? (
             <details className="group relative">
               <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-white/30 px-3 py-2 text-sm font-semibold text-white transition hover:border-yellow-400 hover:text-yellow-400 sm:px-4 [&::-webkit-details-marker]:hidden">
                 <span className="max-w-22 truncate sm:max-w-56">
@@ -165,7 +168,7 @@ export function Navbar() {
 
       {showAdminOnly && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/70 px-4"
+          className="bg-charcoal/70 fixed inset-0 z-50 flex items-center justify-center px-4"
           onClick={() => setShowAdminOnly(false)}
         >
           <div
@@ -192,19 +195,19 @@ export function Navbar() {
             </div>
             <h2
               id="admin-only-title"
-              className="text-lg font-bold text-charcoal"
+              className="text-charcoal text-lg font-bold"
             >
               Admin access only
             </h2>
             <p className="mt-2 text-sm text-neutral-600">
-              This area is for admins only. Your account doesn&apos;t have
-              admin access.
+              This area is for admins only. Your account doesn&apos;t have admin
+              access.
             </p>
             <button
               type="button"
               autoFocus
               onClick={() => setShowAdminOnly(false)}
-              className="mt-5 w-full rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-charcoal transition hover:bg-yellow-300"
+              className="text-charcoal mt-5 w-full rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold transition hover:bg-yellow-300"
             >
               Got it
             </button>

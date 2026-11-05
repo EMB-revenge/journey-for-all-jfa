@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { formatBookedAt } from "~/app/_lib/format";
 import {
   Badge,
   btnLink,
@@ -44,7 +45,7 @@ export default function AdminFeedback() {
               onClick={() => setFilter(f.value)}
               className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 filter === f.value
-                  ? "bg-yellow-400 text-charcoal"
+                  ? "text-charcoal bg-yellow-400"
                   : "border border-neutral-300 text-neutral-700 hover:border-yellow-400"
               }`}
             >
@@ -68,7 +69,7 @@ export default function AdminFeedback() {
           {feedback.data?.map((f) => (
             <tr key={f.id} className={`${row} align-top`}>
               <td className={td}>
-                <span className="font-semibold text-charcoal">{f.name}</span>
+                <span className="text-charcoal font-semibold">{f.name}</span>
                 <div className="text-xs">
                   <a
                     href={`mailto:${f.email}`}
@@ -82,7 +83,7 @@ export default function AdminFeedback() {
                 {f.message}
               </td>
               <td className={`${td} whitespace-nowrap`}>
-                {f.createdAt.toISOString().slice(0, 10)}
+                {formatBookedAt(f.createdAt)}
               </td>
               <td className={td}>
                 <Badge tone={f.isResolved ? "green" : "yellow"}>

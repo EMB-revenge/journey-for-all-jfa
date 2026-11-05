@@ -121,10 +121,8 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  * Protected (authenticated) procedure
  *
  * If you want a query or mutation to ONLY be accessible to logged in users, use this. It verifies
- * the session is valid and guarantees `ctx.session.user` is not null.
- *
- * Deactivated accounts are rejected here too, so a leftover session can't
- * keep calling the API after an admin deactivates the user.
+ * the session is valid and guarantees `ctx.session.user` is not null. Inactive accounts are
+ * rejected too, so a session that outlived a deactivation cannot call anything.
  *
  * @see https://trpc.io/docs/procedures
  */

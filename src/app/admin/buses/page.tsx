@@ -36,7 +36,8 @@ export default function AdminBuses() {
     onError: (e) => alert(e.message),
   });
 
-  const selectedType = typeId || busTypes.data?.[0]?.id || "";
+  const firstType = busTypes.data?.[0]?.id ?? "";
+  const selectedType = typeId === "" ? firstType : typeId;
 
   return (
     <div>
@@ -95,8 +96,8 @@ export default function AdminBuses() {
           </select>
           {busTypes.data?.length === 0 && (
             <p className="text-sm text-red-600 sm:col-span-2">
-              No bus types yet. Add &quot;Aircon&quot; and &quot;Non-aircon&quot;
-              rows to the bus_types table first.
+              No bus types yet. Add &quot;Aircon&quot; and
+              &quot;Non-aircon&quot; rows to the bus_types table first.
             </p>
           )}
           <button
@@ -121,7 +122,7 @@ export default function AdminBuses() {
         <tbody>
           {buses.data?.map((b) => (
             <tr key={b.id} className={row}>
-              <td className={`${td} font-semibold text-charcoal`}>{b.name}</td>
+              <td className={`${td} text-charcoal font-semibold`}>{b.name}</td>
               <td className={`${td} font-mono`}>{b.plateNumber}</td>
               <td className={td}>{b.capacity} seats</td>
               <td className={td}>{b.busType}</td>
