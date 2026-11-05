@@ -5,6 +5,7 @@ import { isUniqueViolation } from "~/lib/errors";
 import { isDeparted, todayInManila } from "~/lib/dates";
 import { formatDuration } from "~/app/_lib/format";
 import { pageOf } from "~/lib/pagination";
+import { scheduleStatusWhere } from "~/lib/admin-schedule-filter";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 
 const PAGE_SIZE = 20;
@@ -127,6 +128,91 @@ export const adminRouter = createTRPCRouter({
       }
     }),
 
+  updateBus: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().trim().min(1).max(80).optional(),
+        plateNumber: z
+          .string()
+          .trim()
+          .min(1)
+          .max(20)
+          .transform((s) => s.toUpperCase())
+          .optional(),
+        busTypeId: z.string().optional(),
+        isActive: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      try {
+        return await ctx.db.bus.update({ where: { id }, data });
+      } catch (error) {
+        if (isUniqueViolation(error))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "A bus with that plate number already exists.",
+          });
+        throw error;
+      }
+    }),
+
+  // ---------------------------------------------------------------------
+  // Cities
+  // ---------------------------------------------------------------------
+  listCities: adminProcedure.query(async ({ ctx }) => {
+    const cities = await ctx.db.city.findMany({
+      orderBy: { name: "asc" },
+    });
+    return cities.map((c) => ({
+      id: c.id,
+      name: c.name,
+      isActive: c.isActive,
+    }));
+  }),
+
+  createCity: adminProcedure
+    .input(z.object({ name: z.string().trim().min(1).max(60) }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const city = await ctx.db.city.create({
+          data: { name: input.name },
+        });
+        return city;
+      } catch (error) {
+        if (isUniqueViolation(error)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "A city with that name already exists.",
+          });
+        }
+        throw error;
+      }
+    }),
+
+  updateCity: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().trim().min(1).max(60).optional(),
+        isActive: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      try {
+        return await ctx.db.city.update({ where: { id }, data });
+      } catch (error) {
+        if (isUniqueViolation(error))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "A city with that name already exists.",
+          });
+        throw error;
+      }
+    }),
+
   // ---------------------------------------------------------------------
   // Routes
   // ---------------------------------------------------------------------
@@ -148,20 +234,131 @@ export const adminRouter = createTRPCRouter({
     }));
   }),
 
+  routeOptions: adminProcedure.query(({ ctx }) =>
+    ctx.db.city.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+  ),
+
+  createRoute: adminProcedure
+    .input(
+      z.object({
+        originCityId: z.string(),
+        destCityId: z.string(),
+        durationMinutes: z.number().int().positive(),
+        baseFare: z.number().positive(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.originCityId === input.destCityId)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Origin and destination must be different.",
+        });
+      try {
+        return await ctx.db.route.create({ data: input });
+      } catch (error) {
+        if (isUniqueViolation(error))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "That route already exists.",
+          });
+        throw error;
+      }
+    }),
+
+  updateRoute: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        originCityId: z.string().optional(),
+        destCityId: z.string().optional(),
+        durationMinutes: z.number().int().positive().optional(),
+        baseFare: z.number().positive().optional(),
+        isActive: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (
+        input.originCityId &&
+        input.destCityId &&
+        input.originCityId === input.destCityId
+      )
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Origin and destination must be different.",
+        });
+      const { id, ...data } = input;
+      try {
+        return await ctx.db.route.update({ where: { id }, data });
+      } catch (error) {
+        if (isUniqueViolation(error))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "That route already exists.",
+          });
+        throw error;
+      }
+    }),
+
   // ---------------------------------------------------------------------
   // Schedules
   // ---------------------------------------------------------------------
+  scheduleOptions: adminProcedure.query(async ({ ctx }) => {
+    const [routes, buses] = await Promise.all([
+      ctx.db.route.findMany({
+        orderBy: { id: "asc" },
+        include: {
+          originCity: { select: { name: true } },
+          destCity: { select: { name: true } },
+        },
+      }),
+      ctx.db.bus.findMany({
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, plateNumber: true },
+      }),
+    ]);
+    return {
+      routes: routes.map((r) => ({
+        id: r.id,
+        label: `${r.originCity.name} → ${r.destCity.name}`,
+      })),
+      buses,
+    };
+  }),
+
   listSchedules: adminProcedure
-    .input(z.object({ includePast: z.boolean().default(false) }))
+    .input(
+      z.object({
+        cursor: z.string().optional(),
+        status: z
+          .enum(["upcoming", "past", "cancelled", "all"])
+          .default("upcoming"),
+        routeId: z.string().optional(),
+        busId: z.string().optional(),
+        date: z.string().optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       const rows = await ctx.db.schedule.findMany({
-        where: input.includePast ? {} : { travelDate: { gte: startOfToday() } },
-        // Newest first when past trips are included, so `take` keeps the
-        // future and the recent past instead of the oldest 200 trips.
-        orderBy: input.includePast
-          ? [{ travelDate: "desc" }, { departureTime: "desc" }]
-          : [{ travelDate: "asc" }, { departureTime: "asc" }],
-        take: 200,
+        where: {
+          AND: [
+            scheduleStatusWhere(input.status, startOfToday()),
+            ...(input.date
+              ? [{ travelDate: new Date(`${input.date}T00:00:00.000Z`) }]
+              : []),
+          ],
+          ...(input.routeId ? { routeId: input.routeId } : {}),
+          ...(input.busId ? { busId: input.busId } : {}),
+        },
+        orderBy: [
+          { travelDate: "asc" },
+          { departureTime: "asc" },
+          { id: "asc" },
+        ],
+        take: PAGE_SIZE + 1,
+        ...(input.cursor && { cursor: { id: input.cursor }, skip: 1 }),
         include: {
           bus: { select: { name: true, plateNumber: true } },
           route: {
@@ -172,17 +369,107 @@ export const adminRouter = createTRPCRouter({
           },
         },
       });
-      return rows.map((s) => ({
-        id: s.id,
-        busName: s.bus.name,
-        plateNumber: s.bus.plateNumber,
-        route: `${s.route.originCity.name} → ${s.route.destCity.name}`,
-        date: dateStr(s.travelDate),
-        departure: timeStr(s.departureTime),
-        arrival: timeStr(s.arrivalTime),
-        isCancelled: s.isCancelled,
-      }));
+      const page = pageOf(rows, PAGE_SIZE);
+      return {
+        nextCursor: page.nextCursor,
+        items: page.items.map((s) => ({
+          id: s.id,
+          busName: s.bus.name,
+          plateNumber: s.bus.plateNumber,
+          route: `${s.route.originCity.name} → ${s.route.destCity.name}`,
+          date: dateStr(s.travelDate),
+          departure: timeStr(s.departureTime),
+          arrival: timeStr(s.arrivalTime),
+          isCancelled: s.isCancelled,
+        })),
+      };
     }),
+
+  createSchedule: adminProcedure
+    .input(
+      z.object({
+        busId: z.string(),
+        routeId: z.string(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        departure: z.string().regex(/^\d{2}:\d{2}$/),
+        arrival: z.string().regex(/^\d{2}:\d{2}$/),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await ctx.db.schedule.create({
+          data: {
+            busId: input.busId,
+            routeId: input.routeId,
+            travelDate: new Date(`${input.date}T00:00:00.000Z`),
+            departureTime: new Date(`1970-01-01T${input.departure}:00.000Z`),
+            arrivalTime: new Date(`1970-01-01T${input.arrival}:00.000Z`),
+          },
+        });
+      } catch (error) {
+        if (isUniqueViolation(error))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "A schedule already exists for this bus, date, and departure time.",
+          });
+        throw error;
+      }
+    }),
+
+  updateSchedule: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        busId: z.string(),
+        routeId: z.string(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        departure: z.string().regex(/^\d{2}:\d{2}$/),
+        arrival: z.string().regex(/^\d{2}:\d{2}$/),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      const current = await ctx.db.schedule.findUnique({
+        where: { id },
+        select: { busId: true, _count: { select: { bookings: true } } },
+      });
+      if (!current) throw new TRPCError({ code: "NOT_FOUND" });
+      if (current.busId !== input.busId && current._count.bookings > 0)
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "The bus cannot be changed after bookings exist.",
+        });
+      try {
+        return await ctx.db.schedule.update({
+          where: { id },
+          data: {
+            busId: data.busId,
+            routeId: data.routeId,
+            travelDate: new Date(`${data.date}T00:00:00.000Z`),
+            departureTime: new Date(`1970-01-01T${data.departure}:00.000Z`),
+            arrivalTime: new Date(`1970-01-01T${data.arrival}:00.000Z`),
+          },
+        });
+      } catch (error) {
+        if (isUniqueViolation(error))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "A schedule already exists for this bus, date, and departure time.",
+          });
+        throw error;
+      }
+    }),
+
+  setScheduleCancelled: adminProcedure
+    .input(z.object({ id: z.string(), isCancelled: z.boolean() }))
+    .mutation(({ ctx, input }) =>
+      ctx.db.schedule.update({
+        where: { id: input.id },
+        data: { isCancelled: input.isCancelled },
+      }),
+    ),
 
   // ---------------------------------------------------------------------
   // Bookings
@@ -193,12 +480,31 @@ export const adminRouter = createTRPCRouter({
         cursor: z.string().optional(),
         search: z.string().trim().optional(),
         status: z.enum(["CONFIRMED", "CANCELLED"]).optional(),
+        date: z.string().optional(),
+        routeId: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
       const rows = await ctx.db.booking.findMany({
         where: {
           status: input.status,
+          ...(input.date
+            ? {
+                schedule: {
+                  travelDate: new Date(`${input.date}T00:00:00.000Z`),
+                },
+              }
+            : {}),
+          ...(input.routeId
+            ? {
+                schedule: {
+                  routeId: input.routeId,
+                  ...(input.date
+                    ? { travelDate: new Date(`${input.date}T00:00:00.000Z`) }
+                    : {}),
+                },
+              }
+            : {}),
           ...(input.search && {
             OR: [
               {
@@ -228,6 +534,7 @@ export const adminRouter = createTRPCRouter({
             select: {
               travelDate: true,
               departureTime: true,
+              isCancelled: true,
               route: {
                 select: {
                   originCity: { select: { name: true } },
@@ -253,6 +560,13 @@ export const adminRouter = createTRPCRouter({
           // Cancelled bookings have no seat rows left, so this is empty for them.
           seats: b.seats.map((s) => s.seat.seatNumber).sort((a, c) => a - c),
           status: b.status,
+          checkedInAt: b.checkedInAt,
+          verificationCode: b.verificationCode,
+          canCheckIn:
+            b.status === "CONFIRMED" &&
+            !b.checkedInAt &&
+            !b.schedule.isCancelled &&
+            dateStr(b.schedule.travelDate) === todayInManila(),
           // The table hides Cancel where the server would refuse anyway.
           canCancel:
             b.status === "CONFIRMED" &&

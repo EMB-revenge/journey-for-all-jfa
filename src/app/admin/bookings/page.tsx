@@ -18,14 +18,32 @@ import { api } from "~/trpc/react";
 
 export default function AdminBookings() {
   const [search, setSearch] = useState("");
+  const [date, setDate] = useState("");
+  const [routeId, setRouteId] = useState("");
   const utils = api.useUtils();
+  const options = api.admin.scheduleOptions.useQuery();
 
   const bookings = api.admin.listBookings.useInfiniteQuery(
-    { search: search || undefined },
+    {
+      search: search || undefined,
+      date: date || undefined,
+      routeId: routeId || undefined,
+    },
     { getNextPageParam: (last) => last.nextCursor },
   );
   const cancel = api.admin.cancelBooking.useMutation({
     onSuccess: () => utils.admin.listBookings.invalidate(),
+    onError: (e) => alert(e.message),
+  });
+  const checkIn = api.booking.checkIn.useMutation({
+    onSuccess: (result) => {
+      alert(
+        result.alreadyCheckedIn
+          ? "This booking was already checked in."
+          : "Booking checked in.",
+      );
+      void utils.admin.listBookings.invalidate();
+    },
     onError: (e) => alert(e.message),
   });
 
@@ -40,6 +58,26 @@ export default function AdminBookings() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
+      <div className="mb-4 flex flex-wrap gap-3">
+        <input
+          className={`${input} w-auto`}
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
+        <select
+          className={`${input} w-auto min-w-48`}
+          value={routeId}
+          onChange={(e) => setRouteId(e.target.value)}
+        >
+          <option value="">All routes</option>
+          {options.data?.routes.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <TableCard>
         <thead>
@@ -88,6 +126,21 @@ export default function AdminBookings() {
                   >
                     Cancel
                   </button>
+                )}
+                {b.checkedInAt ? (
+                  <Badge tone="yellow">Checked in</Badge>
+                ) : (
+                  b.canCheckIn && (
+                    <button
+                      className={btnPrimary}
+                      disabled={checkIn.isPending}
+                      onClick={() =>
+                        checkIn.mutate({ code: b.verificationCode })
+                      }
+                    >
+                      Check in
+                    </button>
+                  )
                 )}
               </td>
             </tr>

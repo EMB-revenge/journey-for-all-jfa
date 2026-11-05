@@ -362,8 +362,13 @@ Auth lives in Better Auth's own routes. Everything below is a procedure. All inp
 | `admin.listBusTypes` | admin | none | bus types | |
 | `admin.createBus` | admin | `{ name, plateNumber, capacity, busTypeId }` | none, creates seats `1..capacity` | `BAD_REQUEST` on duplicate plate |
 | `admin.listRoutes` | admin | none | route rows | |
-| `admin.listSchedules` | admin | `{ includePast? }` | up to 200 trips | |
-| `admin.listBookings` | admin | `{ cursor?, search?, status? }` | one page of bookings with seats and `canCancel` | |
+| `admin.listCities` / `admin.createCity` / `admin.updateCity` | admin | city fields | city rows; active cities feed public search options | `BAD_REQUEST` on duplicate name |
+| `admin.updateBus` | admin | `{ id, name?, plateNumber?, busTypeId?, isActive? }` | updated bus | `BAD_REQUEST` on duplicate plate |
+| `admin.createRoute` / `admin.updateRoute` | admin | route fields | updated route | `BAD_REQUEST` for same-city or duplicate route |
+| `admin.listSchedules` | admin | `{ cursor?, status?, routeId?, busId?, date? }` | 20 trips and optional `nextCursor`, ordered by date, departure, and id | |
+| `admin.createSchedule` / `admin.updateSchedule` | admin | bus, route, date, departure, arrival | updated schedule | `BAD_REQUEST` on duplicate bus/date/time; bus change blocked once bookings exist |
+| `admin.setScheduleCancelled` | admin | `{ id, isCancelled }` | updated schedule | |
+| `admin.listBookings` | admin | `{ cursor?, search?, status?, date?, routeId? }` | one page of bookings with verification code and check-in/cancel eligibility | |
 | `admin.cancelBooking` | admin | `{ id }` | none | `NOT_FOUND`, `PRECONDITION_FAILED` for a booking that is not confirmed, already boarded, or already departed |
 | `admin.listUsers` | admin | `{ search? }` | newest 100 users | |
 | `admin.setUserActive` | admin | `{ id, isActive }` | none, deletes the user's sessions on deactivate | `BAD_REQUEST` for self or an admin account |
@@ -373,19 +378,19 @@ Auth lives in Better Auth's own routes. Everything below is a procedure. All inp
 
 Admins can cancel a confirmed booking that has not boarded and whose trip has not departed. Otherwise bookings stay read-only apart from check-in. Passengers cancel their own bookings through `cancellation.cancel`. Cancelling a schedule sets `isCancelled`. Admin accounts cannot be deactivated, and deactivating a passenger blocks new sessions until an admin reactivates the account.
 
-City, route, and schedule CRUD are still pending. Those pages and procedures are read-only for now.
+City, bus, route, and schedule lifecycle actions are available from the admin pages. Schedule and booking lists use cursor paging and filters.
 
 ---
 
 ## 15. Admin flow
 
-Login → admin layout with a dashboard at `/admin` and a nav of Dashboard | Buses | Routes | Schedules | Bookings | Users | Feedback. The dashboard shows users, confirmed bookings, upcoming trips, revenue, and open feedback, plus shortcuts to each section.
+Login → admin layout with a dashboard at `/admin` and a nav of Cities | Buses | Routes | Schedules | Bookings | Users | Feedback. The dashboard shows users, confirmed bookings, upcoming trips, revenue, and open feedback, plus shortcuts to each section.
 
-Buses lists the fleet and creates a bus with seats `1..capacity`. Routes and Schedules are read-only tables for now. Bookings lists every account's bookings with search and cursor paging, and offers Cancel only where the server would allow it (confirmed, not boarded, trip not departed). Users lists the newest 100 accounts and deactivates passengers; admin rows have no toggle. Feedback filters Open / Resolved / All and toggles a message between resolved and open. A signed-in non-admin who opens `/admin` is sent to `/?adminOnly=1` and sees an "Admin access only" dialog instead of a silent redirect.
+Buses lists the fleet, creates seats `1..capacity`, and supports edits to name, plate, type, and active state; capacity is locked after creation. Routes and schedules support create, edit, and deactivate/cancel or restore. Schedule lists have Upcoming / Past / Cancelled / All tabs, route/bus/date filters, and 20-row cursor paging. Bookings lists every account's bookings with search, date/route filters, cursor paging, cancel where allowed, and a check-in action for today's eligible tickets. Users lists the newest 100 accounts and deactivates passengers; admin rows have no toggle. Feedback filters Open / Resolved / All and toggles a message between resolved and open. A signed-in non-admin who opens `/admin` is sent to `/?adminOnly=1` and sees an "Admin access only" dialog instead of a silent redirect.
 
 Creating a bus creates its seats in the same transaction. Deleting is limited to records with no dependencies; anything referenced by a schedule or booking gets `isActive = false` or `isCancelled = true` instead.
 
-Still pending from this flow: `/admin/cities`, bus edit and deactivate, route and schedule create/edit/deactivate, and date/route filters plus a check-in action on the bookings table.
+City deactivation uses a default-true `City.isActive` migration; public city, bus, route, and schedule search filters honor active/cancelled state.
 
 ---
 
@@ -395,7 +400,7 @@ Still pending from this flow: `/admin/cities`, bus edit and deactivate, route an
 
 **Public:** `/verify/[code]` (read-only ticket check behind the QR), `/contact` (contact form; writes a `feedback` row)
 
-**Admin:** `/admin` is the dashboard; `/admin/buses`, `/admin/routes`, `/admin/schedules`, `/admin/bookings`, `/admin/users`, `/admin/feedback`. `/admin/cities` is still pending.
+**Admin:** `/admin` is the dashboard; `/admin/cities`, `/admin/buses`, `/admin/routes`, `/admin/schedules`, `/admin/bookings`, `/admin/users`, `/admin/feedback`.
 
 - `src/app/layout.tsx` holds the shared shell, `AuthProvider`, and `BookingFlowProvider`. The Admin dashboard link renders only when `session.user.role === "ADMIN"`
 - Pages that read the session or run mutations are client components. Search and results can be server components that call procedures through the server caller

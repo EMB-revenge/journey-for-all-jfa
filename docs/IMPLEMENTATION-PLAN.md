@@ -128,11 +128,13 @@ Landed: passenger details, summary, the confirm transaction, the ticket, and My 
 4. Buses, routes, and cities deactivate with `isActive = false` instead of disappearing
 5. `admin.booking.list`: read-only, filter by date and route, no edit, no delete
 
-**Landed so far:** the dashboard at `/admin`, a one-row admin nav, buses (list and create), routes, schedules, bookings with search, cursor paging, and a guarded cancel, users with passenger deactivation, feedback with Open / Resolved / All filters and reopen, the active-admin gate, and the non-admin "Admin access only" popup. Admin accounts cannot be deactivated. The navbar's "Admin" shortcut is back: a signed-out visitor goes to `/login?redirectTo=/admin`, and a signed-in passenger gets the popup.
+**Landed:** `/admin/cities` supports add, rename, and activate/deactivate. `City.isActive` is introduced with a default-true migration, and public city options exclude inactive cities. Buses support name, plate, type, and active edits while capacity stays locked. Routes support create, edit, activate/deactivate, reject same-city pairs, and report duplicate pairs. Schedules support create, edit, cancel/restore, cursor paging (20 rows), and Upcoming / Past / Cancelled / All tabs with route, bus, and date filters. Schedule ordering is travel date, departure time, and id; changing buses is blocked after bookings exist. Bookings support date and route filters and a table check-in action using the existing `booking.checkIn` procedure; `listBookings` includes the verification code. Schedule uniqueness violations return a friendly message.
 
-**Still pending:** `/admin/cities`, bus edit and deactivate, route and schedule create/edit/deactivate, and date/route filters plus a check-in action on the bookings table.
+The existing dashboard, user management, feedback inbox, active-admin gate, and non-admin "Admin access only" popup remain in the admin area. Admin accounts cannot be deactivated.
 
-**Done when (after the pending work):** an admin adds a city, bus, route, and schedule, and a passenger can search and book that trip.
+**Verification:** `npm run check` and `npm run test`; one focused assertion covers the Upcoming schedule filter clause.
+
+**Done when:** an admin can manage the full city, bus, route, and schedule lifecycle, filter and page trips and bookings, and check in today's confirmed bookings; public search excludes deactivated cities, buses, and routes and cancelled schedules.
 
 ---
 

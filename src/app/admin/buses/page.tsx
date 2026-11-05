@@ -25,6 +25,8 @@ export default function AdminBuses() {
   const [plate, setPlate] = useState("");
   const [capacity, setCapacity] = useState<40 | 50>(40);
   const [typeId, setTypeId] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [active, setActive] = useState(true);
 
   const create = api.admin.createBus.useMutation({
     onSuccess: async () => {
@@ -35,6 +37,14 @@ export default function AdminBuses() {
     },
     onError: (e) => alert(e.message),
   });
+  const update = api.admin.updateBus.useMutation({
+    onSuccess: async () => {
+      await utils.admin.listBuses.invalidate();
+      setOpen(false);
+      setEditingId(null);
+    },
+    onError: (e) => alert(e.message),
+  });
 
   const firstType = busTypes.data?.[0]?.id ?? "";
   const selectedType = typeId === "" ? firstType : typeId;
@@ -42,7 +52,20 @@ export default function AdminBuses() {
   return (
     <div>
       <PageHeader title="Buses">
-        <button className={btnPrimary} onClick={() => setOpen((v) => !v)}>
+        <button
+          className={btnPrimary}
+          onClick={() => {
+            setOpen((v) => {
+              if (!v) {
+                setEditingId(null);
+                setName("");
+                setPlate("");
+                setTypeId("");
+              }
+              return !v;
+            });
+          }}
+        >
           {open ? "Close" : "Add bus"}
         </button>
       </PageHeader>
@@ -52,12 +75,21 @@ export default function AdminBuses() {
           className="mb-6 grid gap-3 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:grid-cols-2"
           onSubmit={(e) => {
             e.preventDefault();
-            create.mutate({
-              name,
-              plateNumber: plate,
-              capacity,
-              busTypeId: selectedType,
-            });
+            if (editingId)
+              update.mutate({
+                id: editingId,
+                name,
+                plateNumber: plate,
+                busTypeId: selectedType,
+                isActive: active,
+              });
+            else
+              create.mutate({
+                name,
+                plateNumber: plate,
+                capacity,
+                busTypeId: selectedType,
+              });
           }}
         >
           <input
@@ -74,14 +106,16 @@ export default function AdminBuses() {
             onChange={(e) => setPlate(e.target.value)}
             required
           />
-          <select
-            className={input}
-            value={capacity}
-            onChange={(e) => setCapacity(Number(e.target.value) as 40 | 50)}
-          >
-            <option value={40}>40 seats</option>
-            <option value={50}>50 seats</option>
-          </select>
+          {!editingId && (
+            <select
+              className={input}
+              value={capacity}
+              onChange={(e) => setCapacity(Number(e.target.value) as 40 | 50)}
+            >
+              <option value={40}>40 seats</option>
+              <option value={50}>50 seats</option>
+            </select>
+          )}
           <select
             className={input}
             value={selectedType}
@@ -102,9 +136,13 @@ export default function AdminBuses() {
           )}
           <button
             className={`${btnPrimary} sm:col-span-2`}
-            disabled={create.isPending || !selectedType}
+            disabled={create.isPending || update.isPending || !selectedType}
           >
-            {create.isPending ? "Saving…" : "Save bus"}
+            {create.isPending || update.isPending
+              ? "Saving…"
+              : editingId
+                ? "Save changes"
+                : "Save bus"}
           </button>
         </form>
       )}
@@ -117,6 +155,7 @@ export default function AdminBuses() {
             <th className={th}>Capacity</th>
             <th className={th}>Aircon</th>
             <th className={th}>Status</th>
+            <th className={th} />
           </tr>
         </thead>
         <tbody>
@@ -130,6 +169,34 @@ export default function AdminBuses() {
                 <Badge tone={b.isActive ? "green" : "gray"}>
                   {b.isActive ? "Active" : "Inactive"}
                 </Badge>
+              </td>
+              <td className={`${td} text-right`}>
+                <div className="flex justify-end gap-3">
+                  <button
+                    className="text-sm font-semibold underline"
+                    onClick={() => {
+                      setEditingId(b.id);
+                      setName(b.name);
+                      setPlate(b.plateNumber);
+                      setTypeId(
+                        busTypes.data?.find((t) => t.name === b.busType)?.id ??
+                          "",
+                      );
+                      setActive(b.isActive);
+                      setOpen(true);
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="text-sm font-semibold underline"
+                    onClick={() =>
+                      update.mutate({ id: b.id, isActive: !b.isActive })
+                    }
+                  >
+                    {b.isActive ? "Deactivate" : "Activate"}
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
