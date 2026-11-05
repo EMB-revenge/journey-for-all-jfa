@@ -85,6 +85,16 @@ const items = [
       </>,
     ),
   },
+  {
+    label: "Feedback",
+    href: "/admin/feedback",
+    icon: icon(
+      <>
+        <path d="M5 5h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 16h-7l-4.5 3.5V16H5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 5 5Z" />
+        <path d="M8 9.5h8M8 12.5h5" />
+      </>,
+    ),
+  },
 ];
 
 export function AdminNav() {

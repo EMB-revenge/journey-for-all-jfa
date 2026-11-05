@@ -19,23 +19,26 @@ export const adminRouter = createTRPCRouter({
   // ---------------------------------------------------------------------
   // Dashboard
   // ---------------------------------------------------------------------
-  stats: adminProcedure.query(async ({ ctx }) => {
-    const [users, bookings, upcomingTrips, revenue] = await Promise.all([
-      ctx.db.user.count(),
-      ctx.db.booking.count({ where: { status: "CONFIRMED" } }),
-      ctx.db.schedule.count({
-        where: { travelDate: { gte: todayPH() }, isCancelled: false },
-      }),
-      ctx.db.booking.aggregate({
-        _sum: { totalAmount: true },
-        where: { status: "CONFIRMED" },
-      }),
-    ]);
+    stats: adminProcedure.query(async ({ ctx }) => {
+    const [users, bookings, upcomingTrips, revenue, openFeedback] =
+      await Promise.all([
+        ctx.db.user.count(),
+        ctx.db.booking.count({ where: { status: "CONFIRMED" } }),
+        ctx.db.schedule.count({
+          where: { travelDate: { gte: todayPH() }, isCancelled: false },
+        }),
+        ctx.db.booking.aggregate({
+          _sum: { totalAmount: true },
+          where: { status: "CONFIRMED" },
+        }),
+        ctx.db.feedback.count({ where: { resolvedAt: null } }),
+      ]);
 
     return {
       users,
       bookings,
       upcomingTrips,
+      openFeedback,
       // Decimal doesn't survive superjson, so send it as a string.
       revenue: revenue._sum.totalAmount?.toString() ?? "0",
     };
@@ -308,6 +311,44 @@ export const adminRouter = createTRPCRouter({
         if (!input.isActive) {
           await tx.session.deleteMany({ where: { userId: input.id } });
         }
+      });
+    }),
+    // ---------------------------------------------------------------------
+  // Feedback
+  // ---------------------------------------------------------------------
+  listFeedback: adminProcedure
+    .input(
+      z.object({
+        filter: z.enum(["open", "resolved", "all"]).default("open"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db.feedback.findMany({
+        where:
+          input.filter === "open"
+            ? { resolvedAt: null }
+            : input.filter === "resolved"
+              ? { resolvedAt: { not: null } }
+              : undefined,
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      });
+      return rows.map((f) => ({
+        id: f.id,
+        name: f.name,
+        email: f.email,
+        message: f.message,
+        createdAt: f.createdAt,
+        isResolved: f.resolvedAt !== null,
+      }));
+    }),
+
+  setFeedbackResolved: adminProcedure
+    .input(z.object({ id: z.string(), resolved: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.feedback.update({
+        where: { id: input.id },
+        data: { resolvedAt: input.resolved ? new Date() : null },
       });
     }),
 });
