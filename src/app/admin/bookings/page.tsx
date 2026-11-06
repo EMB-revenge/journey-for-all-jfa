@@ -86,7 +86,7 @@ export default function AdminBookings() {
             <th className={th}>Account</th>
             <th className={th}>Route</th>
             <th className={th}>Date</th>
-            <th className={th}>Seat</th>
+            <th className={th}>Seats</th>
             <th className={th}>Status</th>
             <th className={th} />
           </tr>
@@ -103,45 +103,58 @@ export default function AdminBookings() {
               </td>
               <td className={td}>{b.route}</td>
               <td className={td}>{b.date}</td>
-              <td className={td}>
-                {b.seats.length ? b.seats.join(", ") : "—"}
+              <td
+                className={td}
+                title={
+                  b.seats.length > 0
+                    ? `Seat numbers: ${b.seats.join(", ")}`
+                    : undefined
+                }
+              >
+                {b.seats.length > 0
+                  ? `${b.seats.length} ${b.seats.length === 1 ? "seat" : "seats"}`
+                  : "—"}
               </td>
               <td className={td}>
                 <Badge tone={b.status === "CANCELLED" ? "red" : "green"}>
                   {b.status === "CANCELLED" ? "Cancelled" : "Confirmed"}
                 </Badge>
               </td>
-              <td className={`${td} text-right`}>
-                {b.canCancel && (
-                  <button
-                    className={btnDanger}
-                    disabled={cancel.isPending}
-                    onClick={() => {
-                      if (
-                        confirm(`Cancel ${b.reference}? This frees its seats.`)
-                      ) {
-                        cancel.mutate({ id: b.id });
-                      }
-                    }}
-                  >
-                    Cancel
-                  </button>
-                )}
-                {b.checkedInAt ? (
-                  <Badge tone="yellow">Checked in</Badge>
-                ) : (
-                  b.canCheckIn && (
+              <td className={td}>
+                <div className="flex items-center justify-end gap-3 whitespace-nowrap">
+                  {b.canCancel && (
                     <button
-                      className={btnPrimary}
-                      disabled={checkIn.isPending}
-                      onClick={() =>
-                        checkIn.mutate({ code: b.verificationCode })
-                      }
+                      className={btnDanger}
+                      disabled={cancel.isPending}
+                      onClick={() => {
+                        if (
+                          confirm(
+                            `Cancel ${b.reference}? This frees its seats.`,
+                          )
+                        ) {
+                          cancel.mutate({ id: b.id });
+                        }
+                      }}
                     >
-                      Check in
+                      Cancel
                     </button>
-                  )
-                )}
+                  )}
+                  {b.checkedInAt ? (
+                    <Badge tone="yellow">Checked in</Badge>
+                  ) : (
+                    b.canCheckIn && (
+                      <button
+                        className={btnPrimary}
+                        disabled={checkIn.isPending}
+                        onClick={() =>
+                          checkIn.mutate({ code: b.verificationCode })
+                        }
+                      >
+                        Check in
+                      </button>
+                    )
+                  )}
+                </div>
               </td>
             </tr>
           ))}
